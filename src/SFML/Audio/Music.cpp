@@ -25,7 +25,6 @@
 ////////////////////////////////////////////////////////////
 // Headers
 ////////////////////////////////////////////////////////////
-#include <SFML/Audio/ALCheck.hpp>
 #include <SFML/Audio/Music.hpp>
 
 #include <SFML/System/Err.hpp>
@@ -33,12 +32,8 @@
 
 #include <algorithm>
 #include <fstream>
-#include <mutex>
 #include <ostream>
 
-#if defined(__APPLE__)
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 
 namespace sf
 {
@@ -242,7 +237,7 @@ void Music::initialize()
     m_samples.resize(m_file.getSampleRate() * m_file.getChannelCount());
 
     // Initialize the stream
-    SoundStream::initialize(m_file.getChannelCount(), m_file.getSampleRate());
+    SoundStream::initialize(m_file.getChannelCount(), m_file.getSampleRate(), m_file.getChannelMap());
 }
 
 ////////////////////////////////////////////////////////////

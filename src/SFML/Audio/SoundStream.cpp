@@ -25,222 +25,495 @@
 ////////////////////////////////////////////////////////////
 // Headers
 ////////////////////////////////////////////////////////////
-#include <SFML/Audio/ALCheck.hpp>
 #include <SFML/Audio/AudioDevice.hpp>
 #include <SFML/Audio/SoundStream.hpp>
 
 #include <SFML/System/Err.hpp>
 #include <SFML/System/Sleep.hpp>
 
-#include <mutex>
+#include <miniaudio.h>
+
+#include <algorithm>
+#include <limits>
 #include <ostream>
+#include <vector>
 
 #include <cassert>
+#include <cstring>
 
-#ifdef _MSC_VER
-#pragma warning(disable : 4355) // 'this' used in base member initializer list
-#endif
-
-#if defined(__APPLE__)
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 
 namespace sf
 {
-////////////////////////////////////////////////////////////
-SoundStream::~SoundStream()
+struct SoundStream::Impl
 {
-    // Stop the sound if it was playing
+    Impl(SoundStream* ownerPtr) : owner(ownerPtr)
+    {
+        // Set this object up as a miniaudio data source
+        ma_data_source_config config = ma_data_source_config_init();
 
-    // Wait for the thread to join
-    awaitStreamingThread();
+        static constexpr ma_data_source_vtable vtable{read, seek, getFormat, getCursor, getLength, setLooping, 0};
+
+        config.vtable = &vtable;
+
+        if (auto result = ma_data_source_init(&config, &dataSourceBase); result != MA_SUCCESS)
+            err() << "Failed to initialize audio data source: " << ma_result_description(result) << std::endl;
+
+        // Initialize sound structure and set default settings
+        initialize();
+
+        ma_sound_set_pitch(&sound, 1.f);
+        ma_sound_set_pan(&sound, 0.f);
+        ma_sound_set_volume(&sound, 1.f);
+        ma_sound_set_spatialization_enabled(&sound, MA_TRUE);
+        ma_sound_set_position(&sound, 0.f, 0.f, 0.f);
+        ma_sound_set_direction(&sound, 0.f, 0.f, -1.f);
+        ma_sound_set_cone(&sound, sf::degrees(360).asRadians(), sf::degrees(360).asRadians(), 0.f); // inner = 360 degrees, outer = 360 degrees, gain = 0
+        ma_sound_set_directional_attenuation_factor(&sound, 1.f);
+        ma_sound_set_velocity(&sound, 0.f, 0.f, 0.f);
+        ma_sound_set_doppler_factor(&sound, 1.f);
+        ma_sound_set_positioning(&sound, ma_positioning_absolute);
+        ma_sound_set_min_distance(&sound, 1.f);
+        ma_sound_set_max_distance(&sound, std::numeric_limits<float>::max());
+        ma_sound_set_min_gain(&sound, 0.f);
+        ma_sound_set_max_gain(&sound, 1.f);
+        ma_sound_set_rolloff(&sound, 1.f);
+    }
+
+    ~Impl()
+    {
+        ma_sound_uninit(&sound);
+
+        ma_data_source_uninit(&dataSourceBase);
+    }
+
+    void initialize()
+    {
+        // Initialize the sound
+        auto* engine = static_cast<ma_engine*>(priv::AudioDevice::getEngine());
+
+        assert(engine != nullptr);
+
+        ma_sound_config soundConfig;
+
+        soundConfig                      = ma_sound_config_init();
+        soundConfig.pDataSource          = this;
+        soundConfig.pEndCallbackUserData = this;
+        soundConfig.endCallback          = [](void* userData, ma_sound* soundPtr)
+        {
+            // Seek back to the start of the sound when it finishes playing
+            auto& impl     = *static_cast<Impl*>(userData);
+            impl.streaming = true;
+
+            if (auto result = ma_sound_seek_to_pcm_frame(soundPtr, 0); result != MA_SUCCESS)
+                err() << "Failed to seek sound to frame 0: " << ma_result_description(result) << std::endl;
+        };
+
+        if (auto result = ma_sound_init_ex(engine, &soundConfig, &sound); result != MA_SUCCESS)
+            err() << "Failed to initialize sound: " << ma_result_description(result) << std::endl;
+
+        // Because we are providing a custom data source, we have to provide the channel map ourselves
+        if (!channelMap.empty())
+        {
+            soundChannelMap.clear();
+
+            for (auto channel : channelMap)
+            {
+                switch (channel)
+                {
+                    case SoundChannel::Unspecified:
+                        soundChannelMap.push_back(MA_CHANNEL_NONE);
+                        break;
+                    case SoundChannel::Mono:
+                        soundChannelMap.push_back(MA_CHANNEL_MONO);
+                        break;
+                    case SoundChannel::FrontLeft:
+                        soundChannelMap.push_back(MA_CHANNEL_FRONT_LEFT);
+                        break;
+                    case SoundChannel::FrontRight:
+                        soundChannelMap.push_back(MA_CHANNEL_FRONT_RIGHT);
+                        break;
+                    case SoundChannel::FrontCenter:
+                        soundChannelMap.push_back(MA_CHANNEL_FRONT_CENTER);
+                        break;
+                    case SoundChannel::FrontLeftOfCenter:
+                        soundChannelMap.push_back(MA_CHANNEL_FRONT_LEFT_CENTER);
+                        break;
+                    case SoundChannel::FrontRightOfCenter:
+                        soundChannelMap.push_back(MA_CHANNEL_FRONT_RIGHT_CENTER);
+                        break;
+                    case SoundChannel::LowFrequencyEffects:
+                        soundChannelMap.push_back(MA_CHANNEL_LFE);
+                        break;
+                    case SoundChannel::BackLeft:
+                        soundChannelMap.push_back(MA_CHANNEL_BACK_LEFT);
+                        break;
+                    case SoundChannel::BackRight:
+                        soundChannelMap.push_back(MA_CHANNEL_BACK_RIGHT);
+                        break;
+                    case SoundChannel::BackCenter:
+                        soundChannelMap.push_back(MA_CHANNEL_BACK_CENTER);
+                        break;
+                    case SoundChannel::SideLeft:
+                        soundChannelMap.push_back(MA_CHANNEL_SIDE_LEFT);
+                        break;
+                    case SoundChannel::SideRight:
+                        soundChannelMap.push_back(MA_CHANNEL_SIDE_RIGHT);
+                        break;
+                    case SoundChannel::TopCenter:
+                        soundChannelMap.push_back(MA_CHANNEL_TOP_CENTER);
+                        break;
+                    case SoundChannel::TopFrontLeft:
+                        soundChannelMap.push_back(MA_CHANNEL_TOP_FRONT_LEFT);
+                        break;
+                    case SoundChannel::TopFrontRight:
+                        soundChannelMap.push_back(MA_CHANNEL_TOP_FRONT_RIGHT);
+                        break;
+                    case SoundChannel::TopFrontCenter:
+                        soundChannelMap.push_back(MA_CHANNEL_TOP_FRONT_CENTER);
+                        break;
+                    case SoundChannel::TopBackLeft:
+                        soundChannelMap.push_back(MA_CHANNEL_TOP_BACK_LEFT);
+                        break;
+                    case SoundChannel::TopBackRight:
+                        soundChannelMap.push_back(MA_CHANNEL_TOP_BACK_RIGHT);
+                        break;
+                    case SoundChannel::TopBackCenter:
+                        soundChannelMap.push_back(MA_CHANNEL_TOP_BACK_CENTER);
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            sound.engineNode.spatializer.pChannelMapIn = soundChannelMap.data();
+        }
+        else
+        {
+            sound.engineNode.spatializer.pChannelMapIn = nullptr;
+        }
+    }
+
+    void reinitialize()
+    {
+        // Save and re-apply settings
+        auto pitch                        = ma_sound_get_pitch(&sound);
+        auto pan                          = ma_sound_get_pan(&sound);
+        auto volume                       = ma_sound_get_volume(&sound);
+        auto spatializationEnabled        = ma_sound_is_spatialization_enabled(&sound);
+        auto position                     = ma_sound_get_position(&sound);
+        auto direction                    = ma_sound_get_direction(&sound);
+        auto directionalAttenuationFactor = ma_sound_get_directional_attenuation_factor(&sound);
+        auto velocity                     = ma_sound_get_velocity(&sound);
+        auto dopplerFactor                = ma_sound_get_doppler_factor(&sound);
+        auto positioning                  = ma_sound_get_positioning(&sound);
+        auto minDistance                  = ma_sound_get_min_distance(&sound);
+        auto maxDistance                  = ma_sound_get_max_distance(&sound);
+        auto minGain                      = ma_sound_get_min_gain(&sound);
+        auto maxGain                      = ma_sound_get_max_gain(&sound);
+        auto rollOff                      = ma_sound_get_rolloff(&sound);
+
+        float innerAngle;
+        float outerAngle;
+        float outerGain;
+        ma_sound_get_cone(&sound, &innerAngle, &outerAngle, &outerGain);
+
+        ma_sound_uninit(&sound);
+
+        initialize();
+
+        ma_sound_set_pitch(&sound, pitch);
+        ma_sound_set_pan(&sound, pan);
+        ma_sound_set_volume(&sound, volume);
+        ma_sound_set_spatialization_enabled(&sound, spatializationEnabled);
+        ma_sound_set_position(&sound, position.x, position.y, position.z);
+        ma_sound_set_direction(&sound, direction.x, direction.y, direction.z);
+        ma_sound_set_directional_attenuation_factor(&sound, directionalAttenuationFactor);
+        ma_sound_set_velocity(&sound, velocity.x, velocity.y, velocity.z);
+        ma_sound_set_doppler_factor(&sound, dopplerFactor);
+        ma_sound_set_positioning(&sound, positioning);
+        ma_sound_set_min_distance(&sound, minDistance);
+        ma_sound_set_max_distance(&sound, maxDistance);
+        ma_sound_set_min_gain(&sound, minGain);
+        ma_sound_set_max_gain(&sound, maxGain);
+        ma_sound_set_rolloff(&sound, rollOff);
+
+        ma_sound_set_cone(&sound, innerAngle, outerAngle, outerGain);
+    }
+
+    static ma_result read(ma_data_source* dataSource, void* framesOut, ma_uint64 frameCount, ma_uint64* framesRead)
+    {
+        auto& impl  = *static_cast<Impl*>(dataSource);
+        auto* owner = impl.owner;
+
+        // Try to fill our buffer with new samples if the source is still willing to stream data
+        if (impl.sampleBuffer.empty() && impl.streaming)
+        {
+            Chunk chunk;
+
+            impl.streaming = owner->onGetData(chunk);
+
+            if (chunk.samples && chunk.sampleCount)
+            {
+                impl.sampleBuffer.assign(chunk.samples, chunk.samples + chunk.sampleCount);
+                impl.sampleBufferCursor = 0;
+            }
+        }
+
+        // Push the samples to miniaudio
+        if (!impl.sampleBuffer.empty())
+        {
+            // Determine how many frames we can read
+            *framesRead = std::min<ma_uint64>(frameCount,
+                                              (impl.sampleBuffer.size() - impl.sampleBufferCursor) / impl.channelCount);
+
+            const auto sampleCount = *framesRead * impl.channelCount;
+
+            // Copy the samples to the output
+            std::memcpy(framesOut,
+                        impl.sampleBuffer.data() + impl.sampleBufferCursor,
+                        static_cast<std::size_t>(sampleCount) * sizeof(impl.sampleBuffer[0]));
+
+            impl.sampleBufferCursor += static_cast<std::size_t>(sampleCount);
+            impl.samplesProcessed += sampleCount;
+
+            if (impl.sampleBufferCursor >= impl.sampleBuffer.size())
+            {
+                impl.sampleBuffer.clear();
+                impl.sampleBufferCursor = 0;
+
+                // If we are looping and at the end of the loop, set the cursor back to the beginning of the loop
+                if (!impl.streaming && impl.loop)
+                {
+                    if (auto seekPositionAfterLoop = owner->onLoop(); seekPositionAfterLoop != NoLoop)
+                    {
+                        impl.streaming        = true;
+                        impl.samplesProcessed = static_cast<std::uint64_t>(seekPositionAfterLoop);
+                    }
+                }
+            }
+        }
+        else
+        {
+            *framesRead = 0;
+        }
+
+        return MA_SUCCESS;
+    }
+
+    static ma_result seek(ma_data_source* dataSource, ma_uint64 frameIndex)
+    {
+        auto& impl  = *static_cast<Impl*>(dataSource);
+        auto* owner = impl.owner;
+
+        impl.streaming = true;
+        impl.sampleBuffer.clear();
+        impl.sampleBufferCursor = 0;
+        impl.samplesProcessed   = frameIndex * impl.channelCount;
+
+        if (impl.sampleRate != 0)
+        {
+            owner->onSeek(seconds(static_cast<float>(frameIndex / impl.sampleRate)));
+        }
+        else
+        {
+            owner->onSeek(Time::Zero);
+        }
+
+        return MA_SUCCESS;
+    }
+
+    static ma_result getFormat(ma_data_source* dataSource,
+                               ma_format*      format,
+                               ma_uint32*      channels,
+                               ma_uint32*      sampleRate,
+                               ma_channel*,
+                               size_t)
+    {
+        const auto& impl = *static_cast<const Impl*>(dataSource);
+
+        // If we don't have valid values yet, initialize with defaults so sound creation doesn't fail
+        *format     = ma_format_s16;
+        *channels   = impl.channelCount ? impl.channelCount : 1;
+        *sampleRate = impl.sampleRate ? impl.sampleRate : 44100;
+
+        return MA_SUCCESS;
+    }
+
+    static ma_result getCursor(ma_data_source* dataSource, ma_uint64* cursor)
+    {
+        auto& impl = *static_cast<Impl*>(dataSource);
+        *cursor    = impl.channelCount ? impl.samplesProcessed / impl.channelCount : 0;
+
+        return MA_SUCCESS;
+    }
+
+    static ma_result getLength(ma_data_source*, ma_uint64* length)
+    {
+        *length = 0;
+
+        return MA_NOT_IMPLEMENTED;
+    }
+
+    static ma_result setLooping(ma_data_source* dataSource, ma_bool32 looping)
+    {
+        static_cast<Impl*>(dataSource)->loop = (looping == MA_TRUE);
+
+        return MA_SUCCESS;
+    }
+
+    ////////////////////////////////////////////////////////////
+    // Member data
+    ////////////////////////////////////////////////////////////
+    ma_data_source_base dataSourceBase{}; //!< The struct that makes this object a miniaudio data source (must be first member)
+    SoundStream* const      owner;        //!< Owning SoundStream object
+    std::vector<ma_channel> soundChannelMap; //!< The map of position in sample frame to sound channel (miniaudio channels)
+    ma_sound                sound{};         //!< The sound
+    std::vector<std::int16_t> sampleBuffer;         //!< Our temporary sample buffer
+    std::size_t               sampleBufferCursor{}; //!< The current read position in the temporary sample buffer
+    std::uint64_t             samplesProcessed{};   //!< Number of samples processed since beginning of the stream
+    unsigned int              channelCount{};       //!< Number of channels (1 = mono, 2 = stereo, ...)
+    unsigned int              sampleRate{};         //!< Frequency (samples / second)
+    std::vector<SoundChannel> channelMap{};         //!< The map of position in sample frame to sound channel
+    bool                      loop{};               //!< Loop flag (true to loop, false to play once)
+    bool                      streaming{true};      //!< True if we are still streaming samples from the source
+};
+
+
+////////////////////////////////////////////////////////////
+SoundStream::SoundStream() : m_impl(std::make_unique<Impl>(this))
+{
 }
 
 
 ////////////////////////////////////////////////////////////
-void SoundStream::initialize(unsigned int channelCount, unsigned int sampleRate)
+SoundStream::~SoundStream() = default;
+
+
+////////////////////////////////////////////////////////////
+void SoundStream::initialize(unsigned int channelCount, unsigned int sampleRate, const std::vector<SoundChannel>& channelMap)
 {
-    m_channelCount     = channelCount;
-    m_sampleRate       = sampleRate;
-    m_samplesProcessed = 0;
+    m_impl->channelCount     = channelCount;
+    m_impl->sampleRate       = sampleRate;
+    m_impl->channelMap       = channelMap;
+    m_impl->samplesProcessed = 0;
 
-    {
-        const std::lock_guard lock(m_threadMutex);
-        m_isStreaming = false;
-    }
-
-    // Deduce the format from the number of channels
-    m_format = priv::AudioDevice::getFormatFromChannelCount(channelCount);
-
-    // Check if the format is valid
-    if (m_format == 0)
-    {
-        m_channelCount = 0;
-        m_sampleRate   = 0;
-        err() << "Unsupported number of channels (" << m_channelCount << ")" << std::endl;
-    }
+    m_impl->reinitialize();
 }
 
 
 ////////////////////////////////////////////////////////////
 void SoundStream::play()
 {
-    // Check if the sound parameters have been set
-    if (m_format == 0)
-    {
-        err() << "Failed to play audio stream: sound parameters have not been initialized (call initialize() first)"
-              << std::endl;
-        return;
-    }
-
-    bool   isStreaming      = false;
-    Status threadStartState = Stopped;
-
-    {
-        const std::lock_guard lock(m_threadMutex);
-
-        isStreaming      = m_isStreaming;
-        threadStartState = m_threadStartState;
-    }
-
-
-    if (isStreaming && (threadStartState == Paused))
-    {
-        // If the sound is paused, resume it
-        const std::lock_guard lock(m_threadMutex);
-        m_threadStartState = Playing;
-        alCheck(alSourcePlay(m_source));
-        return;
-    }
-    else if (isStreaming && (threadStartState == Playing))
-    {
-        // If the sound is playing, stop it and continue as if it was stopped
-        stop();
-    }
-    else if (!isStreaming && m_thread.joinable())
-    {
-        // If the streaming thread reached its end, let it join so it can be restarted.
-        // Also reset the playing offset at the beginning.
-        stop();
-    }
-
-    // Start updating the stream in a separate thread to avoid blocking the application
-    launchStreamingThread(Playing);
+    if (auto result = ma_sound_start(&m_impl->sound); result != MA_SUCCESS)
+        err() << "Failed to start playing sound: " << ma_result_description(result) << std::endl;
 }
 
 
 ////////////////////////////////////////////////////////////
 void SoundStream::pause()
 {
-    // Handle pause() being called before the thread has started
-    {
-        const std::lock_guard lock(m_threadMutex);
-
-        if (!m_isStreaming)
-            return;
-
-        m_threadStartState = Paused;
-    }
-
-    alCheck(alSourcePause(m_source));
+    if (auto result = ma_sound_stop(&m_impl->sound); result != MA_SUCCESS)
+        err() << "Failed to stop playing sound: " << ma_result_description(result) << std::endl;
 }
 
 
 ////////////////////////////////////////////////////////////
 void SoundStream::stop()
 {
-    // Wait for the thread to join
-    awaitStreamingThread();
-
-    // Move to the beginning
-    onSeek(Time::Zero);
+    if (auto result = ma_sound_stop(&m_impl->sound); result != MA_SUCCESS)
+    {
+        err() << "Failed to stop playing sound: " << ma_result_description(result) << std::endl;
+    }
+    else
+    {
+        setPlayingOffset(Time::Zero);
+    }
 }
 
 
 ////////////////////////////////////////////////////////////
 unsigned int SoundStream::getChannelCount() const
 {
-    return m_channelCount;
+    return m_impl->channelCount;
 }
 
 
 ////////////////////////////////////////////////////////////
 unsigned int SoundStream::getSampleRate() const
 {
-    return m_sampleRate;
+    return m_impl->sampleRate;
+}
+
+
+////////////////////////////////////////////////////////////
+std::vector<SoundChannel> SoundStream::getChannelMap() const
+{
+    return m_impl->channelMap;
 }
 
 
 ////////////////////////////////////////////////////////////
 SoundStream::Status SoundStream::getStatus() const
 {
-    Status status = SoundSource::getStatus();
-
-    // To compensate for the lag between play() and alSourceplay()
-    if (status == Stopped)
-    {
-        const std::lock_guard lock(m_threadMutex);
-
-        if (m_isStreaming)
-            status = m_threadStartState;
-    }
-
-    return status;
+    return SoundSource::getStatus();
 }
 
 
 ////////////////////////////////////////////////////////////
 void SoundStream::setPlayingOffset(Time timeOffset)
 {
-    // Get old playing status
-    const Status oldStatus = getStatus();
-
-    // Stop the stream
-    stop();
-
-    // Let the derived class update the current position
-    onSeek(timeOffset);
-
-    // Restart streaming
-    m_samplesProcessed = static_cast<std::uint64_t>(timeOffset.asSeconds() * static_cast<float>(m_sampleRate)) *
-                         m_channelCount;
-
-    if (oldStatus == Stopped)
+    if (m_impl->sampleRate == 0)
         return;
 
-    launchStreamingThread(oldStatus);
+    ma_uint32 sampleRate{};
+
+    if (auto result = ma_sound_get_data_format(&m_impl->sound, nullptr, nullptr, &sampleRate, nullptr, 0);
+        result != MA_SUCCESS)
+        err() << "Failed to get sound data format: " << ma_result_description(result) << std::endl;
+
+    const auto frameIndex = static_cast<ma_uint64>(timeOffset.asSeconds() * static_cast<float>(sampleRate));
+
+    if (auto result = ma_sound_seek_to_pcm_frame(&m_impl->sound, frameIndex); result != MA_SUCCESS)
+        err() << "Failed to seek sound to pcm frame: " << ma_result_description(result) << std::endl;
+
+    m_impl->streaming = true;
+    m_impl->sampleBuffer.clear();
+    m_impl->sampleBufferCursor = 0;
+    m_impl->samplesProcessed   = frameIndex * m_impl->channelCount;
+
+    onSeek(seconds(static_cast<float>(frameIndex / m_impl->sampleRate)));
 }
 
 
 ////////////////////////////////////////////////////////////
 Time SoundStream::getPlayingOffset() const
 {
-    if (m_sampleRate && m_channelCount)
-    {
-        ALfloat secs = 0.f;
-        alCheck(alGetSourcef(m_source, AL_SEC_OFFSET, &secs));
+    if (m_impl->channelCount == 0 || m_impl->sampleRate == 0)
+        return {};
 
-        return seconds(secs + static_cast<float>(m_samplesProcessed) / static_cast<float>(m_sampleRate) /
-                                  static_cast<float>(m_channelCount));
-    }
-    else
+    auto cursor = 0.f;
+
+    if (auto result = ma_sound_get_cursor_in_seconds(&m_impl->sound, &cursor); result != MA_SUCCESS)
     {
-        return Time::Zero;
+        err() << "Failed to get sound cursor: " << ma_result_description(result) << std::endl;
+        return {};
     }
+
+    return seconds(cursor);
 }
 
 
 ////////////////////////////////////////////////////////////
 void SoundStream::setLoop(bool loop)
 {
-    m_loop = loop;
+    ma_sound_set_looping(&m_impl->sound, loop ? MA_TRUE : MA_FALSE);
 }
 
 
 ////////////////////////////////////////////////////////////
 bool SoundStream::getLoop() const
 {
-    return m_loop;
+    return ma_sound_is_looping(&m_impl->sound) == MA_TRUE;
 }
 
 
@@ -251,275 +524,11 @@ std::int64_t SoundStream::onLoop()
     return 0;
 }
 
-////////////////////////////////////////////////////////////
-void SoundStream::setProcessingInterval(Time interval)
-{
-    m_processingInterval = interval;
-}
 
 ////////////////////////////////////////////////////////////
-void SoundStream::streamData()
+void* SoundStream::getSound() const
 {
-    bool requestStop = false;
-
-    {
-        const std::lock_guard lock(m_threadMutex);
-
-        // Check if the thread was launched Stopped
-        if (m_threadStartState == Stopped)
-        {
-            m_isStreaming = false;
-            return;
-        }
-    }
-
-    // Create the buffers
-    alCheck(alGenBuffers(BufferCount, m_buffers));
-    for (std::int64_t& bufferSeek : m_bufferSeeks)
-        bufferSeek = NoLoop;
-
-    // Fill the queue
-    requestStop = fillQueue();
-
-    // Play the sound
-    alCheck(alSourcePlay(m_source));
-
-    {
-        const std::lock_guard lock(m_threadMutex);
-
-        // Check if the thread was launched Paused
-        if (m_threadStartState == Paused)
-            alCheck(alSourcePause(m_source));
-    }
-
-    for (;;)
-    {
-        {
-            const std::lock_guard lock(m_threadMutex);
-            if (!m_isStreaming)
-                break;
-        }
-
-        // The stream has been interrupted!
-        if (SoundSource::getStatus() == Stopped)
-        {
-            if (!requestStop)
-            {
-                // Just continue
-                alCheck(alSourcePlay(m_source));
-            }
-            else
-            {
-                // End streaming
-                const std::lock_guard lock(m_threadMutex);
-                m_isStreaming = false;
-            }
-        }
-
-        // Get the number of buffers that have been processed (i.e. ready for reuse)
-        ALint nbProcessed = 0;
-        alCheck(alGetSourcei(m_source, AL_BUFFERS_PROCESSED, &nbProcessed));
-
-        while (nbProcessed--)
-        {
-            // Pop the first unused buffer from the queue
-            ALuint buffer;
-            alCheck(alSourceUnqueueBuffers(m_source, 1, &buffer));
-
-            // Find its number
-            unsigned int bufferNum = 0;
-            for (unsigned int i = 0; i < BufferCount; ++i)
-                if (m_buffers[i] == buffer)
-                {
-                    bufferNum = i;
-                    break;
-                }
-
-            // Retrieve its size and add it to the samples count
-            if (m_bufferSeeks[bufferNum] != NoLoop)
-            {
-                // This was the last buffer before EOF or Loop End: reset the sample count
-                m_samplesProcessed       = static_cast<std::uint64_t>(m_bufferSeeks[bufferNum]);
-                m_bufferSeeks[bufferNum] = NoLoop;
-            }
-            else
-            {
-                ALint size;
-                ALint bits;
-                alCheck(alGetBufferi(buffer, AL_SIZE, &size));
-                alCheck(alGetBufferi(buffer, AL_BITS, &bits));
-
-                // Bits can be 0 if the format or parameters are corrupt, avoid division by zero
-                if (bits == 0)
-                {
-                    err() << "Bits in sound stream are 0: make sure that the audio format is not corrupt "
-                          << "and initialize() has been called correctly" << std::endl;
-
-                    // Abort streaming (exit main loop)
-                    const std::lock_guard lock(m_threadMutex);
-                    m_isStreaming = false;
-                    requestStop   = true;
-                    break;
-                }
-                else
-                {
-                    m_samplesProcessed += static_cast<std::uint64_t>(size / (bits / 8));
-                }
-            }
-
-            // Fill it and push it back into the playing queue
-            if (!requestStop)
-            {
-                if (fillAndPushBuffer(bufferNum))
-                    requestStop = true;
-            }
-        }
-
-        // Check if any error has occurred
-        if (alGetLastError() != AL_NO_ERROR)
-        {
-            // Abort streaming (exit main loop)
-            const std::lock_guard lock(m_threadMutex);
-            m_isStreaming = false;
-            break;
-        }
-
-        // Leave some time for the other threads if the stream is still playing
-        if (SoundSource::getStatus() != Stopped)
-            sleep(m_processingInterval);
-    }
-
-    // Stop the playback
-    alCheck(alSourceStop(m_source));
-
-    // Dequeue any buffer left in the queue
-    clearQueue();
-
-    // Reset the playing position
-    m_samplesProcessed = 0;
-
-    // Delete the buffers
-    alCheck(alSourcei(m_source, AL_BUFFER, 0));
-    alCheck(alDeleteBuffers(BufferCount, m_buffers));
-}
-
-
-////////////////////////////////////////////////////////////
-bool SoundStream::fillAndPushBuffer(unsigned int bufferNum, bool immediateLoop)
-{
-    bool requestStop = false;
-
-    // Acquire audio data, also address EOF and error cases if they occur
-    Chunk data = {nullptr, 0};
-    for (std::uint32_t retryCount = 0; !onGetData(data) && (retryCount < BufferRetries); ++retryCount)
-    {
-        // Check if the stream must loop or stop
-        if (!m_loop)
-        {
-            // Not looping: Mark this buffer as ending with 0 and request stop
-            if (data.samples != nullptr && data.sampleCount != 0)
-                m_bufferSeeks[bufferNum] = 0;
-            requestStop = true;
-            break;
-        }
-
-        // Return to the beginning or loop-start of the stream source using onLoop(), and store the result in the buffer seek array
-        // This marks the buffer as the "last" one (so that we know where to reset the playing position)
-        m_bufferSeeks[bufferNum] = onLoop();
-
-        // If we got data, break and process it, else try to fill the buffer once again
-        if (data.samples != nullptr && data.sampleCount != 0)
-            break;
-
-        // If immediateLoop is specified, we have to immediately adjust the sample count
-        if (immediateLoop && (m_bufferSeeks[bufferNum] != NoLoop))
-        {
-            // We just tried to begin preloading at EOF or Loop End: reset the sample count
-            m_samplesProcessed       = static_cast<std::uint64_t>(m_bufferSeeks[bufferNum]);
-            m_bufferSeeks[bufferNum] = NoLoop;
-        }
-
-        // We're a looping sound that got no data, so we retry onGetData()
-    }
-
-    // Fill the buffer if some data was returned
-    if (data.samples && data.sampleCount)
-    {
-        const unsigned int buffer = m_buffers[bufferNum];
-
-        // Fill the buffer
-        const auto size = static_cast<ALsizei>(data.sampleCount * sizeof(std::int16_t));
-        alCheck(alBufferData(buffer, m_format, data.samples, size, static_cast<ALsizei>(m_sampleRate)));
-
-        // Push it into the sound queue
-        alCheck(alSourceQueueBuffers(m_source, 1, &buffer));
-    }
-    else
-    {
-        // If we get here, we most likely ran out of retries
-        requestStop = true;
-    }
-
-    return requestStop;
-}
-
-
-////////////////////////////////////////////////////////////
-bool SoundStream::fillQueue()
-{
-    // Fill and enqueue all the available buffers
-    bool requestStop = false;
-    for (unsigned int i = 0; (i < BufferCount) && !requestStop; ++i)
-    {
-        // Since no sound has been loaded yet, we can't schedule loop seeks preemptively,
-        // So if we start on EOF or Loop End, we let fillAndPushBuffer() adjust the sample count
-        if (fillAndPushBuffer(i, (i == 0)))
-            requestStop = true;
-    }
-
-    return requestStop;
-}
-
-
-////////////////////////////////////////////////////////////
-void SoundStream::clearQueue()
-{
-    // Get the number of buffers still in the queue
-    ALint nbQueued;
-    alCheck(alGetSourcei(m_source, AL_BUFFERS_QUEUED, &nbQueued));
-
-    // Dequeue them all
-    ALuint buffer;
-    for (ALint i = 0; i < nbQueued; ++i)
-        alCheck(alSourceUnqueueBuffers(m_source, 1, &buffer));
-}
-
-
-////////////////////////////////////////////////////////////
-void SoundStream::launchStreamingThread(Status threadStartState)
-{
-    {
-        const std::lock_guard lock(m_threadMutex);
-        m_isStreaming      = true;
-        m_threadStartState = threadStartState;
-    }
-
-    assert(!m_thread.joinable() && "Background thread is still running");
-    m_thread = std::thread(&SoundStream::streamData, this);
-}
-
-
-////////////////////////////////////////////////////////////
-void SoundStream::awaitStreamingThread()
-{
-    // Request the thread to join
-    {
-        const std::lock_guard lock(m_threadMutex);
-        m_isStreaming = false;
-    }
-
-    if (m_thread.joinable())
-        m_thread.join();
+    return &m_impl->sound;
 }
 
 } // namespace sf

@@ -22,62 +22,47 @@
 //
 ////////////////////////////////////////////////////////////
 
+#pragma once
+
 ////////////////////////////////////////////////////////////
 // Headers
 ////////////////////////////////////////////////////////////
-#include <SFML/Audio/SoundBufferRecorder.hpp>
+#include <SFML/Audio/Export.hpp>
 
-#include <SFML/System/Err.hpp>
-
-#include <algorithm>
-#include <iterator>
-#include <ostream>
+#include <memory>
 
 
 namespace sf
 {
 ////////////////////////////////////////////////////////////
-SoundBufferRecorder::~SoundBufferRecorder()
-{
-    // Make sure to stop the recording thread
-    stop();
-}
-
-
+/// \brief Base class for classes that require an audio device
+///
 ////////////////////////////////////////////////////////////
-bool SoundBufferRecorder::onStart()
+class SFML_AUDIO_API AudioResource
 {
-    m_samples.clear();
-    m_buffer = SoundBuffer();
+protected:
+    ////////////////////////////////////////////////////////////
+    /// \brief Default constructor
+    ///
+    ////////////////////////////////////////////////////////////
+    AudioResource();
 
-    return true;
-}
-
-
-////////////////////////////////////////////////////////////
-bool SoundBufferRecorder::onProcessSamples(const std::int16_t* samples, std::size_t sampleCount)
-{
-    std::copy(samples, samples + sampleCount, std::back_inserter(m_samples));
-
-    return true;
-}
-
-
-////////////////////////////////////////////////////////////
-void SoundBufferRecorder::onStop()
-{
-    if (m_samples.empty())
-        return;
-
-    if (!m_buffer.loadFromSamples(m_samples.data(), m_samples.size(), getChannelCount(), getSampleRate(), getChannelMap()))
-        err() << "Failed to stop capturing audio data" << std::endl;
-}
-
-
-////////////////////////////////////////////////////////////
-const SoundBuffer& SoundBufferRecorder::getBuffer() const
-{
-    return m_buffer;
-}
+private:
+    ////////////////////////////////////////////////////////////
+    // Member data
+    ////////////////////////////////////////////////////////////
+    const std::shared_ptr<void> m_device; //!< Sound device
+};
 
 } // namespace sf
+
+
+////////////////////////////////////////////////////////////
+/// \class sf::AlResource
+/// \ingroup audio
+///
+/// This class is for internal use only, it must be the base
+/// of every class that requires a valid audio device in
+/// order to work.
+///
+////////////////////////////////////////////////////////////

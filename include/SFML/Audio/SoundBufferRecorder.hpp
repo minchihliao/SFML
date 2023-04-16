@@ -32,6 +32,7 @@
 #include <SFML/Audio/SoundBuffer.hpp>
 #include <SFML/Audio/SoundRecorder.hpp>
 
+#include <memory>
 #include <vector>
 
 
