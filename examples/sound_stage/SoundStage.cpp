@@ -2,35 +2,28 @@
 ////////////////////////////////////////////////////////////
 // Headers
 ////////////////////////////////////////////////////////////
-#include <SFML/Audio/Listener.hpp>
-#include <SFML/Audio/Music.hpp>
-#include <SFML/Audio/Sound.hpp>
-#include <SFML/Audio/SoundBuffer.hpp>
-#include <SFML/Graphics/CircleShape.hpp>
-#include <SFML/Graphics/RectangleShape.hpp>
-#include <SFML/Graphics/Font.hpp>
-#include <SFML/Graphics/RenderWindow.hpp>
-#include <SFML/Graphics/Text.hpp>
-#include <SFML/System/Clock.hpp>
-#include <SFML/Window/Event.hpp>
-#include <SFML/Window/VideoMode.hpp>
+#include <SFML/Graphics.hpp>
 
-#include "imgui-SFML.h"
-#include "imgui.h"
-#include "imgui_stdlib.h"
+#include <SFML/Audio.hpp>
 
-#include <cmath>
+#include <imgui-SFML.h>
+#include <imgui.h>
+#include <imgui_stdlib.h>
+
+#include <algorithm>
 #include <limits>
 #include <memory>
 #include <random>
 #include <vector>
+
+#include <cmath>
 
 namespace
 {
 constexpr auto windowWidth  = 1600u;
 constexpr auto windowHeight = 900u;
 constexpr auto markerRadius = 40.f;
-constexpr auto pi           = 3.14159265359;
+constexpr auto pi           = 3.14159265359f;
 
 std::filesystem::path resourcesDir()
 {
@@ -45,53 +38,48 @@ void errorMessage(const std::string& message)
 {
     if (ImGui::BeginPopupModal("Error"))
     {
-        ImGui::Text(message.c_str());
+        ImGui::Text("%s", message.c_str());
         ImGui::EndPopup();
     }
 }
 
-struct Marker
+class Marker
 {
-    Marker(const sf::SoundSource* theSoundSource,
-           const sf::Vector2f*    theListenerPosition,
+public:
+    Marker(const sf::SoundSource* soundSource,
+           const sf::Vector2f*    listenerPosition,
            const sf::Font&        font,
            const sf::Color&       color,
            const sf::String&      text) :
-    soundSource(theSoundSource),
-    listenerPosition(theListenerPosition),
-    coneCenter({120.f, 1.f}),
-    coneInner({100.f, 1.f}),
-    coneOuter({100.f, 1.f}),
-    marker(markerRadius),
-    label(font, text, static_cast<unsigned int>(markerRadius))
+    m_soundSource(soundSource),
+    m_listenerPosition(listenerPosition),
+    m_label(font, text, static_cast<unsigned int>(markerRadius))
     {
-        coneCenter.setFillColor(sf::Color::Magenta);
-        coneInner.setFillColor(sf::Color(255, 0, 127));
-        coneOuter.setFillColor(sf::Color::Red);
-        marker.setFillColor(color);
-        label.setFillColor(sf::Color::Black);
-        label.setStyle(sf::Text::Bold);
+        m_coneCenter.setFillColor(sf::Color::Magenta);
+        m_coneInner.setFillColor(sf::Color(255, 0, 127));
+        m_coneOuter.setFillColor(sf::Color::Red);
+        m_marker.setFillColor(color);
+        m_label.setFillColor(sf::Color::Black);
+        m_label.setStyle(sf::Text::Bold);
     }
 
     void draw(sf::RenderTarget& target)
     {
-        auto listenerOffset = (listenerPosition && soundSource && soundSource->isRelativeToListener())
-                                  ? *listenerPosition
-                                  : sf::Vector2f();
-        auto labelBounds    = label.getLocalBounds().getSize();
-        labelBounds.x *= 0.5f;
-        labelBounds.y *= 0.75f;
+        const auto listenerOffset = (m_listenerPosition && m_soundSource && m_soundSource->isRelativeToListener())
+                                        ? *m_listenerPosition
+                                        : sf::Vector2f();
+        const auto labelBounds    = m_label.getLocalBounds().getSize().cwiseMul({0.5f, 0.75f});
 
-        target.draw(coneCenter);
+        target.draw(m_coneCenter);
 
         sf::Angle innerAngle;
         sf::Angle outerAngle;
 
         // Check if we are a SoundSource or the Listener
-        if (soundSource)
+        if (m_soundSource)
         {
-            innerAngle = soundSource->getCone().innerAngle;
-            outerAngle = soundSource->getCone().outerAngle;
+            innerAngle = m_soundSource->getCone().innerAngle;
+            outerAngle = m_soundSource->getCone().outerAngle;
         }
         else
         {
@@ -101,84 +89,66 @@ struct Marker
 
         if (innerAngle != sf::degrees(360))
         {
-            coneInner.setRotation(coneCenter.getRotation() - innerAngle / 2);
-            target.draw(coneInner);
-            coneInner.setRotation(coneCenter.getRotation() + innerAngle / 2);
-            target.draw(coneInner);
+            m_coneInner.setRotation(m_coneCenter.getRotation() - innerAngle / 2);
+            target.draw(m_coneInner);
+            m_coneInner.setRotation(m_coneCenter.getRotation() + innerAngle / 2);
+            target.draw(m_coneInner);
         }
 
         if (outerAngle != sf::degrees(360))
         {
-            coneOuter.setRotation(coneCenter.getRotation() - outerAngle / 2);
-            target.draw(coneOuter);
-            coneOuter.setRotation(coneCenter.getRotation() + outerAngle / 2);
-            target.draw(coneOuter);
+            m_coneOuter.setRotation(m_coneCenter.getRotation() - outerAngle / 2);
+            target.draw(m_coneOuter);
+            m_coneOuter.setRotation(m_coneCenter.getRotation() + outerAngle / 2);
+            target.draw(m_coneOuter);
         }
 
-        target.draw(marker, sf::Transform().translate(-sf::Vector2f(markerRadius, markerRadius) + listenerOffset));
-        target.draw(label, sf::Transform().translate(-labelBounds + listenerOffset));
-    }
-
-    const sf::Vector2f& getPosition() const
-    {
-        return marker.getPosition();
+        target.draw(m_marker, sf::Transform().translate(-sf::Vector2f(markerRadius, markerRadius) + listenerOffset));
+        target.draw(m_label, sf::Transform().translate(-labelBounds + listenerOffset));
     }
 
     void setPosition(const sf::Vector2f& position)
     {
-        coneCenter.setPosition(position);
-        coneInner.setPosition(position);
-        coneOuter.setPosition(position);
-        marker.setPosition(position);
-        label.setPosition(position);
+        m_coneCenter.setPosition(position);
+        m_coneInner.setPosition(position);
+        m_coneOuter.setPosition(position);
+        m_marker.setPosition(position);
+        m_label.setPosition(position);
     }
 
     sf::Angle getRotation() const
     {
-        return coneCenter.getRotation();
+        return m_coneCenter.getRotation();
     }
 
     void setRotation(const sf::Angle& angle)
     {
-        coneCenter.setRotation(angle);
+        m_coneCenter.setRotation(angle);
     }
 
-    const sf::SoundSource* soundSource;
-    const sf::Vector2f*    listenerPosition;
-    sf::RectangleShape     coneCenter;
-    sf::RectangleShape     coneInner;
-    sf::RectangleShape     coneOuter;
-    sf::CircleShape        marker;
-    sf::Text               label;
+private:
+    const sf::SoundSource* m_soundSource;
+    const sf::Vector2f*    m_listenerPosition;
+    sf::RectangleShape     m_coneCenter{{120.f, 1.f}};
+    sf::RectangleShape     m_coneInner{{100.f, 1.f}};
+    sf::RectangleShape     m_coneOuter{{100.f, 1.f}};
+    sf::CircleShape        m_marker{markerRadius};
+    sf::Text               m_label;
 };
 
-struct Object
+class Object
 {
+public:
     Object(const sf::Font&     font,
-           sf::SoundSource&    theSoundSource,
+           sf::SoundSource&    soundSource,
            const sf::Vector2f& listenerPosition,
            const sf::Color&    markerColor,
            const std::string&  markerPrefix) :
-    index(
-        []()
-        {
-            static std::size_t nextIndex{};
-            return nextIndex++;
-        }()),
-    soundSource(theSoundSource),
-    marker(&soundSource, &listenerPosition, font, markerColor, markerPrefix + std::to_string(index))
+    m_soundSource(soundSource),
+    m_marker(&m_soundSource, &listenerPosition, font, markerColor, markerPrefix + getIndex())
     {
-        position = []()
-        {
-            static std::random_device                    rd;
-            static std::mt19937                          rng(rd());
-            static std::uniform_real_distribution<float> xDistribution(-100.f, 100.f);
-            static std::uniform_real_distribution<float> yDistribution(-100.f, 100.f);
-            return sf::Vector2f(xDistribution(rng), yDistribution(rng));
-        }();
-        rotation = sf::degrees(270);
-        marker.setPosition(position);
-        marker.setRotation(rotation);
+        m_marker.setPosition(m_position);
+        m_marker.setRotation(m_rotation);
     }
 
     virtual ~Object() = default;
@@ -187,125 +157,135 @@ struct Object
 
     void drawMarker(sf::RenderTarget& target)
     {
-        marker.draw(target);
+        m_marker.draw(target);
     }
 
     void drawPositionRotationControls()
     {
-        ImGui::DragFloat2("Position", &position.x);
-
-        if (auto radians = rotation.asRadians();
-            ImGui::DragFloat("Rotation", &radians, 0.01f, static_cast<float>(-2 * pi), static_cast<float>(2 * pi)))
-            rotation = sf::radians(radians);
+        ImGui::DragFloat2("Position", &m_position.x);
+        if (auto radians = m_rotation.asRadians(); ImGui::DragFloat("Rotation", &radians, 0.01f, -2 * pi, 2 * pi))
+            m_rotation = sf::radians(radians);
     }
 
     void drawConeControls()
     {
-        auto cone = soundSource.getCone();
+        auto cone = m_soundSource.getCone();
 
-        if (auto innerAngle = cone.innerAngle.asRadians();
-            ImGui::DragFloat("Cone Inner", &innerAngle, 0.01f, 0.f, static_cast<float>(2 * pi)))
+        if (auto innerAngle = cone.innerAngle.asRadians(); ImGui::DragFloat("Cone Inner", &innerAngle, 0.01f, 0.f, 2 * pi))
             cone.innerAngle = std::clamp(sf::radians(innerAngle), sf::degrees(0), cone.outerAngle);
 
-        if (auto outerAngle = cone.outerAngle.asRadians();
-            ImGui::DragFloat("Cone Outer", &outerAngle, 0.01f, 0.f, static_cast<float>(2 * pi)))
+        if (auto outerAngle = cone.outerAngle.asRadians(); ImGui::DragFloat("Cone Outer", &outerAngle, 0.01f, 0.f, 2 * pi))
             cone.outerAngle = std::clamp(sf::radians(outerAngle), cone.innerAngle, sf::degrees(360));
 
         if (auto outerGain = cone.outerGain; ImGui::DragFloat("Outer Gain", &outerGain, 0.001f, 0.f, 1.f))
             cone.outerGain = outerGain;
 
-        soundSource.setCone(cone);
+        m_soundSource.setCone(cone);
     }
 
     void drawSoundSourceControls()
     {
-        if (auto relative = soundSource.isRelativeToListener(); ImGui::Checkbox("Relative to Listener", &relative))
-            soundSource.setRelativeToListener(relative);
+        if (auto relative = m_soundSource.isRelativeToListener(); ImGui::Checkbox("Relative to Listener", &relative))
+            m_soundSource.setRelativeToListener(relative);
 
-        if (auto pitch = soundSource.getPitch(); ImGui::DragFloat("Pitch", &pitch, 0.01f, 0.f, 10.f))
-            soundSource.setPitch(pitch);
+        if (auto pitch = m_soundSource.getPitch(); ImGui::DragFloat("Pitch", &pitch, 0.01f, 0.f, 10.f))
+            m_soundSource.setPitch(pitch);
 
-        if (auto volume = soundSource.getVolume(); ImGui::DragFloat("Volume", &volume, 1.f, 0.f, 100.f))
-            soundSource.setVolume(volume);
+        if (auto volume = m_soundSource.getVolume(); ImGui::DragFloat("Volume", &volume, 1.f, 0.f, 100.f))
+            m_soundSource.setVolume(volume);
 
-        if (auto attenuation = soundSource.getAttenuation();
+        if (auto attenuation = m_soundSource.getAttenuation();
             ImGui::DragFloat("Attenuation", &attenuation, 0.01f, 0.f, 10.f))
-            soundSource.setAttenuation(attenuation);
+            m_soundSource.setAttenuation(attenuation);
 
-        if (auto minDistance = soundSource.getMinDistance(); ImGui::DragFloat("Min. Distance", &minDistance))
-            soundSource.setMinDistance(minDistance);
+        if (auto minDistance = m_soundSource.getMinDistance(); ImGui::DragFloat("Min. Distance", &minDistance))
+            m_soundSource.setMinDistance(minDistance);
     }
 
     void drawPlayControls()
     {
         if (ImGui::Button("Play"))
-            soundSource.play();
+            m_soundSource.play();
         ImGui::SameLine();
         if (ImGui::Button("Pause"))
-            soundSource.pause();
+            m_soundSource.pause();
         ImGui::SameLine();
         if (ImGui::Button("Stop"))
-            soundSource.stop();
+            m_soundSource.stop();
     }
 
-    void update(sf::Time /*tick*/)
+    void update()
     {
-        marker.setPosition(position);
-        marker.setRotation(rotation);
-        soundSource.setPosition({position.x, 0, position.y});
-        soundSource.setDirection({std::cos(rotation.asRadians()), 0, std::sin(rotation.asRadians())});
+        m_marker.setPosition(m_position);
+        m_marker.setRotation(m_rotation);
+        m_soundSource.setPosition({m_position.x, 0, m_position.y});
+        m_soundSource.setDirection({std::cos(m_rotation.asRadians()), 0, std::sin(m_rotation.asRadians())});
     }
 
-    std::size_t      index;
-    sf::SoundSource& soundSource;
-    Marker           marker;
-    sf::Vector2f     position;
-    sf::Angle        rotation;
-    sf::Vector2f     amplitude;
-    sf::Vector2f     frequency;
-    float            time = 0.f;
+    const std::string& getIndex() const
+    {
+        return m_index;
+    }
+
+private:
+    std::string      m_index{[]()
+                        {
+                            static std::size_t nextIndex = 0;
+                            return std::to_string(nextIndex++);
+                        }()};
+    sf::SoundSource& m_soundSource;
+    Marker           m_marker;
+    sf::Vector2f     m_position{[]()
+                            {
+                                static std::random_device                    rd;
+                                static std::mt19937                          rng(rd());
+                                static std::uniform_real_distribution<float> xDistribution(-100.f, 100.f);
+                                static std::uniform_real_distribution<float> yDistribution(-100.f, 100.f);
+                                return sf::Vector2f(xDistribution(rng), yDistribution(rng));
+                            }()};
+    sf::Angle        m_rotation{sf::degrees(270)};
 };
 
-struct Sound : Object
+class Sound : public Object
 {
+public:
     Sound(const sf::Font& font, const sf::Vector2f& listenerPosition) :
-    Object(font, sound, listenerPosition, sf::Color::Yellow, "S"),
-    sound(buffer)
+    Object(font, m_sound, listenerPosition, sf::Color::Yellow, "S")
     {
-        sound.setAttenuation(0.01f);
+        m_sound.setAttenuation(0.01f);
     }
 
     void draw(sf::RenderTarget& target) override
     {
-        if (sound.getBuffer() && sound.getBuffer()->getDuration() != sf::Time::Zero)
+        if (m_sound.getBuffer().getDuration() != sf::Time::Zero)
             drawMarker(target);
 
         ImGui::SetNextWindowSize({0.f, 0.f});
-        ImGui::Begin(("Sound " + std::to_string(index)).c_str());
+        ImGui::Begin(("Sound " + getIndex()).c_str());
 
-        ImGui::InputText("File Path", &path);
+        ImGui::InputText("File Path", &m_path);
         ImGui::SameLine();
         if (ImGui::Button("Load"))
         {
-            sound.stop();
+            m_sound.stop();
 
-            if (!buffer.loadFromFile(path))
-                errorMessage("Failed to load " + path);
+            if (!m_buffer.loadFromFile(m_path))
+                errorMessage("Failed to load " + m_path);
         }
 
-        if (sound.getBuffer() && sound.getBuffer()->getDuration() != sf::Time::Zero)
+        if (m_sound.getBuffer().getDuration() != sf::Time::Zero)
         {
-            auto duration = sound.getBuffer() ? sound.getBuffer()->getDuration().asSeconds() : 0.f;
-            if (auto offset = sound.getPlayingOffset().asSeconds();
+            const auto duration = m_sound.getBuffer().getDuration().asSeconds();
+            if (auto offset = m_sound.getPlayingOffset().asSeconds();
                 ImGui::SliderFloat("Playing Offset", &offset, 0.f, duration))
-                sound.setPlayingOffset(sf::seconds(offset));
+                m_sound.setPlayingOffset(sf::seconds(offset));
 
             drawPositionRotationControls();
             drawConeControls();
             drawSoundSourceControls();
 
-            if (auto loop = sound.getLoop(); ImGui::Checkbox("Loop", &loop))
-                sound.setLoop(loop);
+            if (auto loop = m_sound.getLoop(); ImGui::Checkbox("Loop", &loop))
+                m_sound.setLoop(loop);
 
             drawPlayControls();
         }
@@ -313,50 +293,51 @@ struct Sound : Object
         ImGui::End();
     }
 
-    std::string     path = (resourcesDir() / "ding.flac").string();
-    sf::SoundBuffer buffer;
-    sf::Sound       sound;
+private:
+    std::string     m_path{(resourcesDir() / "ding.flac").string()};
+    sf::SoundBuffer m_buffer;
+    sf::Sound       m_sound{m_buffer};
 };
 
-
-struct Music : Object
+class Music : public Object
 {
+public:
     Music(const sf::Font& font, const sf::Vector2f& listenerPosition) :
-    Object(font, music, listenerPosition, sf::Color::Cyan, "M")
+    Object(font, m_music, listenerPosition, sf::Color::Cyan, "M")
     {
-        music.setAttenuation(0.01f);
+        m_music.setAttenuation(0.01f);
     }
 
     void draw(sf::RenderTarget& target) override
     {
-        if (music.getDuration() != sf::Time::Zero)
+        if (m_music.getDuration() != sf::Time::Zero)
             drawMarker(target);
 
         ImGui::SetNextWindowSize({0.f, 0.f});
-        ImGui::Begin(("Music " + std::to_string(index)).c_str());
+        ImGui::Begin(("Music " + getIndex()).c_str());
 
-        ImGui::InputText("File Path", &path);
+        ImGui::InputText("File Path", &m_path);
         ImGui::SameLine();
         if (ImGui::Button("Load"))
         {
-            music.stop();
+            m_music.stop();
 
-            if (!music.openFromFile(path))
-                errorMessage("Failed to load " + path);
+            if (!m_music.openFromFile(m_path))
+                errorMessage("Failed to load " + m_path);
         }
 
-        if (music.getDuration() != sf::Time::Zero)
+        if (m_music.getDuration() != sf::Time::Zero)
         {
-            if (auto offset = music.getPlayingOffset().asSeconds();
-                ImGui::SliderFloat("Playing Offset", &offset, 0.f, music.getDuration().asSeconds()))
-                music.setPlayingOffset(sf::seconds(offset));
+            if (auto offset = m_music.getPlayingOffset().asSeconds();
+                ImGui::SliderFloat("Playing Offset", &offset, 0.f, m_music.getDuration().asSeconds()))
+                m_music.setPlayingOffset(sf::seconds(offset));
 
             drawPositionRotationControls();
             drawConeControls();
             drawSoundSourceControls();
 
-            if (auto loop = music.getLoop(); ImGui::Checkbox("Loop", &loop))
-                music.setLoop(loop);
+            if (auto loop = m_music.getLoop(); ImGui::Checkbox("Loop", &loop))
+                m_music.setLoop(loop);
 
             drawPlayControls();
         }
@@ -364,19 +345,18 @@ struct Music : Object
         ImGui::End();
     }
 
-    std::string path  = (resourcesDir() / "doodle_pop.ogg").string();
-    sf::Music   music;
+private:
+    std::string m_path{(resourcesDir() / "doodle_pop.ogg").string()};
+    sf::Music   m_music;
 };
 
-
-struct Tone : sf::SoundStream, Object
+class Tone : public sf::SoundStream, public Object
 {
+public:
     Tone(const sf::Font& font, const sf::Vector2f& listenerPosition) :
-    Object(font, *this, listenerPosition, sf::Color::Green, "T"),
-    sampleBuffer(chunkSize, 0)
+    Object(font, *this, listenerPosition, sf::Color::Green, "T")
     {
-        initialize(1, sampleRate, {sf::SoundChannel::Mono});
-
+        sf::SoundStream::initialize(1, sampleRate, {sf::SoundChannel::Mono});
         setAttenuation(0.01f);
     }
 
@@ -385,35 +365,35 @@ struct Tone : sf::SoundStream, Object
         drawMarker(target);
 
         ImGui::SetNextWindowSize({0.f, 0.f});
-        ImGui::Begin(("Tone " + std::to_string(index)).c_str());
+        ImGui::Begin(("Tone " + getIndex()).c_str());
 
-        if (ImGui::RadioButton("Sine", type == Type::Sine))
-            type = Type::Sine;
+        if (ImGui::RadioButton("Sine", m_type == Type::Sine))
+            m_type = Type::Sine;
         ImGui::SameLine();
-        if (ImGui::RadioButton("Square", type == Type::Square))
-            type = Type::Square;
+        if (ImGui::RadioButton("Square", m_type == Type::Square))
+            m_type = Type::Square;
         ImGui::SameLine();
-        if (ImGui::RadioButton("Triangle", type == Type::Triangle))
-            type = Type::Triangle;
+        if (ImGui::RadioButton("Triangle", m_type == Type::Triangle))
+            m_type = Type::Triangle;
         ImGui::SameLine();
-        if (ImGui::RadioButton("Sawtooth", type == Type::Sawtooth))
-            type = Type::Sawtooth;
+        if (ImGui::RadioButton("Sawtooth", m_type == Type::Sawtooth))
+            m_type = Type::Sawtooth;
 
-        ImGui::DragFloat("Amplitude", &amplitude, 0.01f, 0.f, 1.f);
-        ImGui::DragFloat("Frequency", &frequency, 1.f, 0.f, 1000.f);
+        ImGui::DragFloat("Amplitude", &m_amplitude, 0.01f, 0.f, 1.f);
+        ImGui::DragFloat("Frequency", &m_frequency, 1.f, 0.f, 1000.f);
 
         ImGui::PlotLines("Wave",
                          [](void* data, int sampleIndex)
                          {
                              const auto& samples = *static_cast<std::vector<std::int16_t>*>(data);
-                             return static_cast<float>(samples[sampleIndex]);
+                             return static_cast<float>(samples[static_cast<std::size_t>(sampleIndex)]);
                          },
-                         &sampleBuffer,
-                         static_cast<int>(sampleBuffer.size()),
+                         &m_sampleBuffer,
+                         static_cast<int>(m_sampleBuffer.size()),
                          0,
                          nullptr,
-                         std::numeric_limits<std::int16_t>::min() * amplitude,
-                         std::numeric_limits<std::int16_t>::max() * amplitude,
+                         std::numeric_limits<std::int16_t>::min() * m_amplitude,
+                         std::numeric_limits<std::int16_t>::max() * m_amplitude,
                          {0.f, 100.f});
 
         drawPositionRotationControls();
@@ -424,48 +404,49 @@ struct Tone : sf::SoundStream, Object
         ImGui::End();
     }
 
+private:
     bool onGetData(sf::SoundStream::Chunk& chunk) override
     {
-        const auto            period = 1.0 / frequency;
+        const auto period = 1.f / m_frequency;
 
         for (auto i = 0u; i < chunkSize; ++i)
         {
-            auto value = 0.0;
+            auto value = 0.f;
 
-            switch (type)
+            switch (m_type)
             {
                 case Type::Sine:
                 {
-                    value = amplitude * std::sin(2 * pi * frequency * time);
+                    value = m_amplitude * std::sin(2 * pi * m_frequency * m_time);
                     break;
                 }
                 case Type::Square:
                 {
-                    value = amplitude *
-                            (2 * (2 * std::floor(frequency * time) - std::floor(2 * frequency * time)) + 1);
+                    value = m_amplitude *
+                            (2 * (2 * std::floor(m_frequency * m_time) - std::floor(2 * m_frequency * m_time)) + 1);
                     break;
                 }
                 case Type::Triangle:
                 {
-                    value = 4 * amplitude / period *
-                                std::abs(std::fmod(((std::fmod((time - period / 4), period)) + period), period) -
+                    value = 4 * m_amplitude / period *
+                                std::abs(std::fmod(((std::fmod((m_time - period / 4), period)) + period), period) -
                                          period / 2) -
-                            amplitude;
+                            m_amplitude;
                     break;
                 }
                 case Type::Sawtooth:
                 {
-                    value = amplitude * 2 * (time / period - std::floor(0.5 + time / period));
+                    value = m_amplitude * 2 * (m_time / period - std::floor(0.5f + m_time / period));
                     break;
                 }
             }
 
-            sampleBuffer[i]  = static_cast<std::int16_t>(std::lround(value * std::numeric_limits<std::int16_t>::max()));
-            time += timePerSample;
+            m_sampleBuffer[i] = static_cast<std::int16_t>(std::lround(value * std::numeric_limits<std::int16_t>::max()));
+            m_time += timePerSample;
         }
 
         chunk.sampleCount = chunkSize;
-        chunk.samples     = sampleBuffer.data();
+        chunk.samples     = m_sampleBuffer.data();
 
         return true;
     }
@@ -485,14 +466,15 @@ struct Tone : sf::SoundStream, Object
 
     static constexpr unsigned int sampleRate = 44100;
     static constexpr std::size_t  chunkSize  = sampleRate / 100;
-    std::vector<std::int16_t>     sampleBuffer;
-    Type                          type          = Type::Triangle;
-    float                         amplitude     = 0.05f;
-    float                         frequency     = 220.f;
-    double                        time          = 0.f;
-    double                        timePerSample = 1.f / static_cast<double>(sampleRate);
+    static constexpr float        timePerSample{1.f / static_cast<float>(sampleRate)};
+
+    std::vector<std::int16_t> m_sampleBuffer{chunkSize, 0};
+    Type                      m_type{Type::Triangle};
+    float                     m_amplitude{0.05f};
+    float                     m_frequency{220};
+    float                     m_time{};
 };
-}
+} // namespace
 
 
 ////////////////////////////////////////////////////////////
@@ -507,7 +489,8 @@ int main()
     window.setFramerateLimit(60);
     window.setView(sf::View(sf::Vector2f(0, 0), static_cast<sf::Vector2f>(window.getSize())));
 
-    ImGui::SFML::Init(window);
+    if (!ImGui::SFML::Init(window))
+        return EXIT_FAILURE;
 
     sf::Font font;
     if (!font.loadFromFile(resourcesDir() / "tuffy.ttf"))
@@ -523,8 +506,7 @@ int main()
     sf::Clock deltaClock;
     while (window.isOpen())
     {
-        sf::Event event;
-        while (window.pollEvent(event))
+        for (sf::Event event; window.pollEvent(event);)
         {
             ImGui::SFML::ProcessEvent(window, event);
 
@@ -541,12 +523,10 @@ int main()
             }
         }
 
-        const auto tick = deltaClock.restart();
-
         for (auto& object : objects)
-            object->update(tick);
+            object->update();
 
-        ImGui::SFML::Update(window, tick);
+        ImGui::SFML::Update(window, deltaClock.restart());
 
         ImGui::SetNextWindowSize({0.f, 0.f});
         ImGui::Begin("Control");
@@ -558,7 +538,7 @@ int main()
         }
 
         if (auto rotation = marker.getRotation().asRadians();
-            ImGui::DragFloat("Listener Rotation", &rotation, 0.01f, static_cast<float>(-2 * pi), static_cast<float>(2 * pi)))
+            ImGui::DragFloat("Listener Rotation", &rotation, 0.01f, -2 * pi, 2 * pi))
         {
             marker.setRotation(sf::radians(rotation));
             sf::Listener::setDirection({std::cos(rotation), 0, std::sin(rotation)});
@@ -567,11 +547,11 @@ int main()
         auto cone = sf::Listener::getCone();
 
         if (auto innerAngle = cone.innerAngle.asRadians();
-            ImGui::DragFloat("Listener Cone Inner", &innerAngle, 0.01f, 0.f, static_cast<float>(2 * pi)))
+            ImGui::DragFloat("Listener Cone Inner", &innerAngle, 0.01f, 0.f, 2 * pi))
             cone.innerAngle = std::clamp(sf::radians(innerAngle), sf::degrees(0), cone.outerAngle);
 
         if (auto outerAngle = cone.outerAngle.asRadians();
-            ImGui::DragFloat("Listener Cone Outer", &outerAngle, 0.01f, 0.f, static_cast<float>(2 * pi)))
+            ImGui::DragFloat("Listener Cone Outer", &outerAngle, 0.01f, 0.f, 2 * pi))
             cone.outerAngle = std::clamp(sf::radians(outerAngle), cone.innerAngle, sf::degrees(360));
 
         if (auto outerGain = cone.outerGain; ImGui::DragFloat("Outer Gain", &outerGain, 0.001f, 0.f, 1.f))
@@ -594,15 +574,11 @@ int main()
 
         for (auto& object : objects)
             object->draw(window);
-
         marker.draw(window);
-
         ImGui::SFML::Render(window);
 
         window.display();
     }
 
     ImGui::SFML::Shutdown();
-
-    return 0;
 }

@@ -28,10 +28,8 @@ int main()
     auto devices = sf::SoundRecorder::getAvailableDevices();
 
     std::cout << "Available capture devices:\n" << std::endl;
-
     for (auto i = 0u; i < devices.size(); ++i)
         std::cout << i << ": " << devices[i] << '\n';
-
     std::cout << std::endl;
 
     std::size_t deviceIndex = 0;

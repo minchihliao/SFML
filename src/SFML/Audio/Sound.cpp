@@ -25,17 +25,20 @@
 ////////////////////////////////////////////////////////////
 // Headers
 ////////////////////////////////////////////////////////////
-#include <SFML/Audio/Sound.hpp>
-
 #include <SFML/Audio/AudioDevice.hpp>
+#include <SFML/Audio/Sound.hpp>
 #include <SFML/Audio/SoundBuffer.hpp>
+
 #include <SFML/System/Err.hpp>
 
-#include <algorithm>
-#include <cassert>
-#include <limits>
 #include <miniaudio.h>
+
+#include <algorithm>
+#include <limits>
 #include <ostream>
+
+#include <cassert>
+#include <cstring>
 
 
 namespace sf
@@ -44,12 +47,11 @@ struct Sound::Impl
 {
     Impl()
     {
+        static constexpr ma_data_source_vtable vtable{read, seek, getFormat, getCursor, getLength, setLooping, 0};
+
         // Set this object up as a miniaudio data source
         ma_data_source_config config = ma_data_source_config_init();
-
-        static ma_data_source_vtable vtable{read, seek, getFormat, getCursor, getLength, setLooping, 0};
-
-        config.vtable = &vtable;
+        config.vtable                = &vtable;
 
         if (auto result = ma_data_source_init(&config, &m_dataSourceBase); result != MA_SUCCESS)
             err() << "Failed to initialize audio data source: " << ma_result_description(result) << std::endl;
@@ -63,7 +65,7 @@ struct Sound::Impl
         ma_sound_set_spatialization_enabled(&m_sound, MA_TRUE);
         ma_sound_set_position(&m_sound, 0.f, 0.f, 0.f);
         ma_sound_set_direction(&m_sound, 0.f, 0.f, -1.f);
-        ma_sound_set_cone(&m_sound, sf::degrees(360).asRadians(), sf::degrees(360).asRadians(), 0.f); // inner = 360 degrees, outer = 360 degrees, gain = 0
+        ma_sound_set_cone(&m_sound, degrees(360).asRadians(), degrees(360).asRadians(), 0.f); // inner = 360 degrees, outer = 360 degrees, gain = 0
         ma_sound_set_directional_attenuation_factor(&m_sound, 1.f);
         ma_sound_set_velocity(&m_sound, 0.f, 0.f, 0.f);
         ma_sound_set_doppler_factor(&m_sound, 1.f);
@@ -241,14 +243,17 @@ struct Sound::Impl
             return MA_NO_DATA_AVAILABLE;
 
         // Determine how many frames we can read
-        *framesRead = std::min(frameCount, (buffer->getSampleCount() - impl.m_cursor) / buffer->getChannelCount());
+        *framesRead = std::min<ma_uint64>(frameCount,
+                                          (buffer->getSampleCount() - impl.m_cursor) / buffer->getChannelCount());
 
         // Copy the samples to the output
         const auto sampleCount = *framesRead * buffer->getChannelCount();
 
-        std::memcpy(framesOut, buffer->getSamples() + impl.m_cursor, sampleCount * sizeof(buffer->getSamples()[0]));
+        std::memcpy(framesOut,
+                    buffer->getSamples() + impl.m_cursor,
+                    static_cast<std::size_t>(sampleCount) * sizeof(buffer->getSamples()[0]));
 
-        impl.m_cursor += sampleCount;
+        impl.m_cursor += static_cast<std::size_t>(sampleCount);
 
         // If we are looping and at the end of the sound, set the cursor back to the start
         if (impl.m_looping && (impl.m_cursor >= buffer->getSampleCount()))
@@ -265,7 +270,7 @@ struct Sound::Impl
         if (buffer == nullptr)
             return MA_NO_DATA_AVAILABLE;
 
-        impl.m_cursor = frameIndex * buffer->getChannelCount();
+        impl.m_cursor = static_cast<std::size_t>(frameIndex * buffer->getChannelCount());
 
         return MA_SUCCESS;
     }
@@ -316,8 +321,7 @@ struct Sound::Impl
 
     static ma_result setLooping(ma_data_source* dataSource, ma_bool32 looping)
     {
-        auto& impl = *static_cast<Impl*>(dataSource);
-
+        auto& impl     = *static_cast<Impl*>(dataSource);
         impl.m_looping = (looping == MA_TRUE);
 
         return MA_SUCCESS;
@@ -326,25 +330,25 @@ struct Sound::Impl
     ////////////////////////////////////////////////////////////
     // Member data
     ////////////////////////////////////////////////////////////
-    ma_data_source_base     m_dataSourceBase{}; //!< The struct that makes this object a miniaudio data source (must be first member)
-    std::vector<ma_channel> m_channelMap;       //!< The map of position in sample frame to sound channel (miniaudio channels)
-    ma_sound                m_sound{};          //!< The sound
-    std::size_t             m_cursor{};         //!< The current playing position
-    bool                    m_looping{};        //!< True if we are looping the sound
-    const SoundBuffer*      m_buffer{};         //!< Sound buffer bound to the source
+    ma_data_source_base m_dataSourceBase{}; //!< The struct that makes this object a miniaudio data source (must be first member)
+    std::vector<ma_channel> m_channelMap; //!< The map of position in sample frame to sound channel (miniaudio channels)
+    ma_sound                m_sound{};    //!< The sound
+    std::size_t             m_cursor{};   //!< The current playing position
+    bool                    m_looping{};  //!< True if we are looping the sound
+    const SoundBuffer*      m_buffer{};   //!< Sound buffer bound to the source
 };
 
 
 ////////////////////////////////////////////////////////////
-Sound::Sound(const SoundBuffer& /* buffer */) : m_impl(std::make_unique<Impl>())
+Sound::Sound(const SoundBuffer& buffer) : m_impl(std::make_unique<Impl>())
 {
-    // m_buffer->attachSound(this);
-    // alCheck(alSourcei(m_source, AL_BUFFER, static_cast<ALint>(m_buffer->m_buffer)));
+    setBuffer(buffer);
 }
 
 
 ////////////////////////////////////////////////////////////
-Sound::Sound(const Sound& copy) : m_impl(std::make_unique<Impl>())
+// NOLINTNEXTLINE(readability-redundant-member-init)
+Sound::Sound(const Sound& copy) : SoundSource(copy), m_impl(std::make_unique<Impl>())
 {
     if (copy.m_impl->m_buffer)
         setBuffer(*copy.m_impl->m_buffer);
@@ -434,13 +438,14 @@ void Sound::setPlayingOffset(Time timeOffset)
         err() << "Failed to seek sound to pcm frame: " << ma_result_description(result) << std::endl;
 
     if (m_impl->m_buffer)
-        m_impl->m_cursor = frameIndex * m_impl->m_buffer->getChannelCount();
+        m_impl->m_cursor = static_cast<std::size_t>(frameIndex * m_impl->m_buffer->getChannelCount());
 }
 
 
 ////////////////////////////////////////////////////////////
 const SoundBuffer& Sound::getBuffer() const
 {
+    assert(m_impl && "Sound::getBuffer() Cannot access unset buffer");
     return *m_impl->m_buffer;
 }
 
@@ -456,14 +461,14 @@ bool Sound::getLoop() const
 Time Sound::getPlayingOffset() const
 {
     if (!m_impl->m_buffer || m_impl->m_buffer->getChannelCount() == 0 || m_impl->m_buffer->getSampleRate() == 0)
-        return Time();
+        return {};
 
     auto cursor = 0.f;
 
     if (auto result = ma_sound_get_cursor_in_seconds(&m_impl->m_sound, &cursor); result != MA_SUCCESS)
     {
         err() << "Failed to get sound cursor: " << ma_result_description(result) << std::endl;
-        return Time();
+        return {};
     }
 
     return seconds(cursor);
@@ -520,6 +525,13 @@ void Sound::detachBuffer()
         m_impl->m_buffer->detachSound(this);
         m_impl->m_buffer = nullptr;
     }
+}
+
+
+////////////////////////////////////////////////////////////
+void Sound::reattachBuffer()
+{
+    // TODO reimplement
 }
 
 

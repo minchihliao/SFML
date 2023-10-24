@@ -40,7 +40,6 @@
 #include <cstring>
 
 
-
 namespace sf
 {
 struct SoundRecorder::Impl
@@ -313,11 +312,12 @@ unsigned int SoundRecorder::getSampleRate() const
 std::vector<std::string> SoundRecorder::getAvailableDevices()
 {
     // Convert the internal miniaudio device list into a name-only list
-    std::vector<std::string> deviceNameList;
     const auto               devices = Impl::getAvailableDevices();
+    std::vector<std::string> deviceNameList;
+    deviceNameList.reserve(devices.size());
 
     for (const auto& device : devices)
-        deviceNameList.push_back(device.name);
+        deviceNameList.emplace_back(device.name);
 
     return deviceNameList;
 }

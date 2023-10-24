@@ -56,6 +56,13 @@ set(CODECS_SRC
 )
 source_group("codecs" FILES ${CODECS_SRC})
 
+# Ensure certain files are compiled as Objective-C++
+# See: https://miniaud.io/docs/manual/index.html#Building
+if(SFML_OS_IOS)
+    enable_language(OBJCXX)
+    set_source_files_properties(${SRCROOT}/AudioDevice.cpp PROPERTIES LANGUAGE OBJCXX)
+endif()
+
 # let CMake know about our additional audio libraries paths (on Android and OSX)
 if(SFML_OS_MACOSX)
     list(APPEND CMAKE_LIBRARY_PATH "${PROJECT_SOURCE_DIR}/extlibs/libs-macos/Frameworks")
@@ -78,7 +85,9 @@ target_compile_definitions(sfml-audio PRIVATE OV_EXCLUDE_STATIC_CALLBACKS FLAC__
 target_link_libraries(sfml-audio
                       PUBLIC SFML::System
                       PRIVATE Vorbis::vorbis FLAC::FLAC)
-if(NOT SFML_OS_IOS)
+if(SFML_OS_IOS)
+    target_link_libraries(sfml-audio PRIVATE "-framework Foundation" "-framework CoreFoundation" "-framework CoreAudio" "-framework AudioToolbox" "-framework AVFoundation")
+else()
     target_link_libraries(sfml-audio PRIVATE Vorbis::vorbisfile Vorbis::vorbisenc)
 endif()
 
@@ -90,4 +99,8 @@ target_include_directories(sfml-audio SYSTEM PRIVATE "${PROJECT_SOURCE_DIR}/extl
 
 if(SFML_OS_ANDROID)
     target_link_libraries(sfml-audio PRIVATE android OpenSLES)
+endif()
+
+if(SFML_OS_LINUX)
+    target_link_libraries(sfml-audio PRIVATE dl)
 endif()
