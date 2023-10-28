@@ -364,7 +364,8 @@ Ftp::Response Ftp::sendCommand(const std::string& command, const std::string& pa
         commandStr = command + "\r\n";
 
     // Send it to the server
-    if (m_commandSocket.send(commandStr.c_str(), commandStr.length()) != Socket::Status::Done)
+    if (m_commandSocket.send(reinterpret_cast<const std::byte*>(commandStr.c_str()), commandStr.length()) !=
+        Socket::Status::Done)
         return Response(Response::Status::ConnectionClosed);
 
     // Get the response
@@ -612,13 +613,13 @@ void Ftp::DataChannel::receive(std::ostream& stream)
 void Ftp::DataChannel::send(std::istream& stream)
 {
     // Send data
-    char        buffer[1024];
+    std::byte   buffer[1024];
     std::size_t count;
 
     for (;;)
     {
         // read some data from the stream
-        stream.read(buffer, sizeof(buffer));
+        stream.read(reinterpret_cast<char*>(buffer), sizeof(buffer));
 
         if (!stream.good() && !stream.eof())
         {

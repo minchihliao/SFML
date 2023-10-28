@@ -121,7 +121,7 @@ bool Image::loadFromFile(const std::filesystem::path& filename)
 
 
 ////////////////////////////////////////////////////////////
-bool Image::loadFromMemory(const void* data, std::size_t size)
+bool Image::loadFromMemory(const std::byte* data, std::size_t size)
 {
     return priv::ImageLoader::getInstance().loadImageFromMemory(data, size, m_pixels, m_size);
 }

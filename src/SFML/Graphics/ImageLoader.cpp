@@ -131,7 +131,7 @@ bool ImageLoader::loadImageFromFile(const std::filesystem::path& filename, std::
 
 
 ////////////////////////////////////////////////////////////
-bool ImageLoader::loadImageFromMemory(const void* data, std::size_t dataSize, std::vector<std::uint8_t>& pixels, Vector2u& size)
+bool ImageLoader::loadImageFromMemory(const std::byte* data, std::size_t dataSize, std::vector<std::uint8_t>& pixels, Vector2u& size)
 {
     // Check input parameters
     if (data && dataSize)
@@ -140,11 +140,15 @@ bool ImageLoader::loadImageFromMemory(const void* data, std::size_t dataSize, st
         pixels.clear();
 
         // Load the image and get a pointer to the pixels in memory
-        int         width    = 0;
-        int         height   = 0;
-        int         channels = 0;
-        const auto* buffer   = static_cast<const unsigned char*>(data);
-        unsigned char* ptr = stbi_load_from_memory(buffer, static_cast<int>(dataSize), &width, &height, &channels, STBI_rgb_alpha);
+        int            width    = 0;
+        int            height   = 0;
+        int            channels = 0;
+        unsigned char* ptr      = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(data),
+                                                   static_cast<int>(dataSize),
+                                                   &width,
+                                                   &height,
+                                                   &channels,
+                                                   STBI_rgb_alpha);
 
         if (ptr)
         {

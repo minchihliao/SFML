@@ -68,7 +68,7 @@ bool Music::openFromFile(const std::filesystem::path& filename)
 
 
 ////////////////////////////////////////////////////////////
-bool Music::openFromMemory(const void* data, std::size_t sizeInBytes)
+bool Music::openFromMemory(const std::byte* data, std::size_t sizeInBytes)
 {
     // First stop the music if it was already running
     stop();

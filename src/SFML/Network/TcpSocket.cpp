@@ -222,7 +222,7 @@ void TcpSocket::disconnect()
 
 
 ////////////////////////////////////////////////////////////
-Socket::Status TcpSocket::send(const void* data, std::size_t size)
+Socket::Status TcpSocket::send(const std::byte* data, std::size_t size)
 {
     if (!isBlocking())
         err() << "Warning: Partial sends might not be handled properly." << std::endl;
@@ -234,7 +234,7 @@ Socket::Status TcpSocket::send(const void* data, std::size_t size)
 
 
 ////////////////////////////////////////////////////////////
-Socket::Status TcpSocket::send(const void* data, std::size_t size, std::size_t& sent)
+Socket::Status TcpSocket::send(const std::byte* data, std::size_t size, std::size_t& sent)
 {
     // Check the parameters
     if (!data || (size == 0))
@@ -251,7 +251,7 @@ Socket::Status TcpSocket::send(const void* data, std::size_t size, std::size_t& 
 #pragma GCC diagnostic ignored "-Wuseless-cast"
         // Send a chunk of data
         result = static_cast<int>(::send(getNativeHandle(),
-                                         static_cast<const char*>(data) + sent,
+                                         reinterpret_cast<const char*>(data) + sent,
                                          static_cast<priv::SocketImpl::Size>(size - sent),
                                          flags));
 #pragma GCC diagnostic pop
@@ -323,7 +323,7 @@ Socket::Status TcpSocket::send(Packet& packet)
 
     // Get the data to send from the packet
     std::size_t size = 0;
-    const void* data = packet.onSend(size);
+    const auto* data = packet.onSend(size);
 
     // First convert the packet size to network byte order
     std::uint32_t packetSize = htonl(static_cast<std::uint32_t>(size));

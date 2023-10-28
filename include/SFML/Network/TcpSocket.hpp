@@ -130,7 +130,7 @@ public:
     /// \brief Send raw data to the remote peer
     ///
     /// To be able to handle partial sends over non-blocking
-    /// sockets, use the send(const void*, std::size_t, std::size_t&)
+    /// sockets, use the send(const std::byte*, std::size_t, std::size_t&)
     /// overload instead.
     /// This function will fail if the socket is not connected.
     ///
@@ -142,7 +142,7 @@ public:
     /// \see receive
     ///
     ////////////////////////////////////////////////////////////
-    [[nodiscard]] Status send(const void* data, std::size_t size);
+    [[nodiscard]] Status send(const std::byte* data, std::size_t size);
 
     ////////////////////////////////////////////////////////////
     /// \brief Send raw data to the remote peer
@@ -158,7 +158,7 @@ public:
     /// \see receive
     ///
     ////////////////////////////////////////////////////////////
-    [[nodiscard]] Status send(const void* data, std::size_t size, std::size_t& sent);
+    [[nodiscard]] Status send(const std::byte* data, std::size_t size, std::size_t& sent);
 
     ////////////////////////////////////////////////////////////
     /// \brief Receive raw data from the remote peer

@@ -130,7 +130,7 @@ public:
     /// \see receive
     ///
     ////////////////////////////////////////////////////////////
-    [[nodiscard]] Status send(const void* data, std::size_t size, const IpAddress& remoteAddress, unsigned short remotePort);
+    [[nodiscard]] Status send(const std::byte* data, std::size_t size, const IpAddress& remoteAddress, unsigned short remotePort);
 
     ////////////////////////////////////////////////////////////
     /// \brief Receive raw data from a remote peer

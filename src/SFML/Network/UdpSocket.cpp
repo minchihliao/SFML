@@ -98,7 +98,7 @@ void UdpSocket::unbind()
 
 
 ////////////////////////////////////////////////////////////
-Socket::Status UdpSocket::send(const void* data, std::size_t size, const IpAddress& remoteAddress, unsigned short remotePort)
+Socket::Status UdpSocket::send(const std::byte* data, std::size_t size, const IpAddress& remoteAddress, unsigned short remotePort)
 {
     // Create the internal socket if it doesn't exist
     create();
@@ -119,7 +119,7 @@ Socket::Status UdpSocket::send(const void* data, std::size_t size, const IpAddre
     // Send the data (unlike TCP, all the data is always sent in one call)
     const int sent = static_cast<int>(
         sendto(getNativeHandle(),
-               static_cast<const char*>(data),
+               reinterpret_cast<const char*>(data),
                static_cast<priv::SocketImpl::Size>(size),
                0,
                reinterpret_cast<sockaddr*>(&address),
@@ -195,7 +195,7 @@ Socket::Status UdpSocket::send(Packet& packet, const IpAddress& remoteAddress, u
 
     // Get the data to send from the packet
     std::size_t size = 0;
-    const void* data = packet.onSend(size);
+    const auto* data = packet.onSend(size);
 
     // Send it
     return send(data, size, remoteAddress, remotePort);

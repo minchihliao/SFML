@@ -367,7 +367,8 @@ Http::Response Http::sendRequest(const Http::Request& request, Time timeout)
         if (!requestStr.empty())
         {
             // Send it through the socket
-            if (m_connection.send(requestStr.c_str(), requestStr.size()) == Socket::Status::Done)
+            if (m_connection.send(reinterpret_cast<const std::byte*>(requestStr.c_str()), requestStr.size()) ==
+                Socket::Status::Done)
             {
                 // Wait for the server's response
                 std::string receivedStr;

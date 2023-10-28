@@ -35,6 +35,8 @@
 #include <string>
 #include <vector>
 
+#include <cstddef>
+
 
 namespace sf
 {
@@ -92,7 +94,7 @@ public:
     /// \return True if loading was successful
     ///
     ////////////////////////////////////////////////////////////
-    bool loadImageFromMemory(const void* data, std::size_t dataSize, std::vector<std::uint8_t>& pixels, Vector2u& size);
+    bool loadImageFromMemory(const std::byte* data, std::size_t dataSize, std::vector<std::uint8_t>& pixels, Vector2u& size);
 
     ////////////////////////////////////////////////////////////
     /// \brief Load an image from a custom stream

@@ -103,7 +103,7 @@ bool InputSoundFile::openFromFile(const std::filesystem::path& filename)
 
 
 ////////////////////////////////////////////////////////////
-bool InputSoundFile::openFromMemory(const void* data, std::size_t sizeInBytes)
+bool InputSoundFile::openFromMemory(const std::byte* data, std::size_t sizeInBytes)
 {
     // If the file is already open, first close it
     close();
@@ -117,7 +117,7 @@ bool InputSoundFile::openFromMemory(const void* data, std::size_t sizeInBytes)
     auto memory = std::make_unique<MemoryInputStream>();
 
     // Open it
-    memory->open(data, sizeInBytes);
+    memory->open(static_cast<const std::byte*>(data), sizeInBytes);
 
     // Pass the stream to the reader
     SoundFileReader::Info info;

@@ -38,6 +38,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <cstddef>
+
 
 #ifdef SFML_SYSTEM_ANDROID
 namespace sf::priv
@@ -143,7 +145,7 @@ public:
     /// \see loadFromFile, loadFromStream
     ///
     ////////////////////////////////////////////////////////////
-    [[nodiscard]] bool loadFromMemory(const void* data, std::size_t sizeInBytes);
+    [[nodiscard]] bool loadFromMemory(const std::byte* data, std::size_t sizeInBytes);
 
     ////////////////////////////////////////////////////////////
     /// \brief Load the font from a custom stream

@@ -35,6 +35,8 @@
 #include <filesystem>
 #include <vector>
 
+#include <cstddef>
+
 
 namespace sf
 {
@@ -110,7 +112,7 @@ public:
     /// \see openFromFile, openFromStream
     ///
     ////////////////////////////////////////////////////////////
-    [[nodiscard]] bool openFromMemory(const void* data, std::size_t sizeInBytes);
+    [[nodiscard]] bool openFromMemory(const std::byte* data, std::size_t sizeInBytes);
 
     ////////////////////////////////////////////////////////////
     /// \brief Open a music from an audio file in a custom stream

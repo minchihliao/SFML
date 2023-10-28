@@ -30,7 +30,7 @@ TEST_CASE("[System] sf::MemoryInputStream")
         using namespace std::literals::string_view_literals;
         constexpr auto        memoryContents = "hello world"sv;
         sf::MemoryInputStream mis;
-        mis.open(memoryContents.data(), sizeof(char) * memoryContents.size());
+        mis.open(reinterpret_cast<const std::byte*>(memoryContents.data()), sizeof(char) * memoryContents.size());
 
         char buffer[32];
         CHECK(mis.read(buffer, 5) == 5);

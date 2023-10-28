@@ -135,7 +135,7 @@ public:
     /// \see getDataSize
     ///
     ////////////////////////////////////////////////////////////
-    const void* getData() const;
+    const std::byte* getData() const;
 
     ////////////////////////////////////////////////////////////
     /// \brief Get the size of the data contained in the packet
@@ -388,7 +388,7 @@ protected:
     /// \see onReceive
     ///
     ////////////////////////////////////////////////////////////
-    virtual const void* onSend(std::size_t& size);
+    virtual const std::byte* onSend(std::size_t& size);
 
     ////////////////////////////////////////////////////////////
     /// \brief Called after the packet is received over the network

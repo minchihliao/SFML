@@ -35,6 +35,8 @@
 
 #include <filesystem>
 
+#include <cstddef>
+
 
 namespace sf
 {
@@ -179,7 +181,7 @@ public:
     /// \see loadFromFile, loadFromStream, loadFromImage
     ///
     ////////////////////////////////////////////////////////////
-    [[nodiscard]] bool loadFromMemory(const void* data, std::size_t size, const IntRect& area = IntRect());
+    [[nodiscard]] bool loadFromMemory(const std::byte* data, std::size_t size, const IntRect& area = IntRect());
 
     ////////////////////////////////////////////////////////////
     /// \brief Load the texture from a custom stream

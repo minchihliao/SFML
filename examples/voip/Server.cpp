@@ -135,9 +135,7 @@ private:
                     const std::lock_guard lock(m_mutex);
                     const std::size_t     oldSize = m_samples.size();
                     m_samples.resize(oldSize + sampleCount);
-                    std::memcpy(&(m_samples[oldSize]),
-                                static_cast<const char*>(packet.getData()) + 1,
-                                sampleCount * sizeof(std::int16_t));
+                    std::memcpy(&m_samples[oldSize], packet.getData() + 1, sampleCount * sizeof(std::int16_t));
                 }
             }
             else if (id == serverEndOfStream)

@@ -34,7 +34,8 @@ void runUdpServer(unsigned short port)
 
     // Send an answer to the client
     const char out[] = "Hi, I'm the server";
-    if (socket.send(out, sizeof(out), sender.value(), senderPort) != sf::Socket::Status::Done)
+    if (socket.send(reinterpret_cast<const std::byte*>(out), sizeof(out), sender.value(), senderPort) !=
+        sf::Socket::Status::Done)
         return;
     std::cout << "Message sent to the client: " << std::quoted(out) << std::endl;
 }
@@ -59,7 +60,7 @@ void runUdpClient(unsigned short port)
 
     // Send a message to the server
     const char out[] = "Hi, I'm a client";
-    if (socket.send(out, sizeof(out), server.value(), port) != sf::Socket::Status::Done)
+    if (socket.send(reinterpret_cast<const std::byte*>(out), sizeof(out), server.value(), port) != sf::Socket::Status::Done)
         return;
     std::cout << "Message sent to the server: " << std::quoted(out) << std::endl;
 

@@ -36,6 +36,8 @@
 #include <string_view>
 #include <vector>
 
+#include <cstddef>
+
 
 namespace sf
 {
@@ -104,7 +106,7 @@ public:
     /// \see loadFromFile, loadFromStream
     ///
     ////////////////////////////////////////////////////////////
-    [[nodiscard]] bool loadFromMemory(const void* data, std::size_t size);
+    [[nodiscard]] bool loadFromMemory(const std::byte* data, std::size_t size);
 
     ////////////////////////////////////////////////////////////
     /// \brief Load the image from a custom stream

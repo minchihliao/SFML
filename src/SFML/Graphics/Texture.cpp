@@ -270,7 +270,7 @@ bool Texture::loadFromFile(const std::filesystem::path& filename, const IntRect&
 
 
 ////////////////////////////////////////////////////////////
-bool Texture::loadFromMemory(const void* data, std::size_t size, const IntRect& area)
+bool Texture::loadFromMemory(const std::byte* data, std::size_t size, const IntRect& area)
 {
     Image image;
     return image.loadFromMemory(data, size) && loadFromImage(image, area);

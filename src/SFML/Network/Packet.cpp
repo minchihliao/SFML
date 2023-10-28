@@ -90,7 +90,7 @@ void Packet::clear()
 
 
 ////////////////////////////////////////////////////////////
-const void* Packet::getData() const
+const std::byte* Packet::getData() const
 {
     return !m_data.empty() ? m_data.data() : nullptr;
 }
@@ -591,7 +591,7 @@ bool Packet::checkSize(std::size_t size)
 
 
 ////////////////////////////////////////////////////////////
-const void* Packet::onSend(std::size_t& size)
+const std::byte* Packet::onSend(std::size_t& size)
 {
     size = getDataSize();
     return getData();

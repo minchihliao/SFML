@@ -59,7 +59,7 @@ public:
     /// \param sizeInBytes Size of the data, in bytes
     ///
     ////////////////////////////////////////////////////////////
-    void open(const void* data, std::size_t sizeInBytes);
+    void open(const std::byte* data, std::size_t sizeInBytes);
 
     ////////////////////////////////////////////////////////////
     /// \brief Read data from the stream

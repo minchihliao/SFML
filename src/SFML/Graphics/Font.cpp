@@ -212,7 +212,7 @@ bool Font::loadFromFile(const std::filesystem::path& filename)
 
 
 ////////////////////////////////////////////////////////////
-bool Font::loadFromMemory(const void* data, std::size_t sizeInBytes)
+bool Font::loadFromMemory(const std::byte* data, std::size_t sizeInBytes)
 {
     // Cleanup the previous resources
     cleanup();
