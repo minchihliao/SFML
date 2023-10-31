@@ -13,7 +13,7 @@ FetchContent_Declare(ImGui-SFML
     GIT_TAG master
     GIT_SHALLOW ON)
 FetchContent_MakeAvailable(ImGui-SFML)
-set_target_properties(ImGui-SFML PROPERTIES EXPORT_COMPILE_COMMANDS OFF)
+set_target_properties(ImGui-SFML PROPERTIES EXPORT_COMPILE_COMMANDS OFF UNITY_BUILD OFF)
 get_target_property(IMGUI_SFML_INCLUDE_DIRS ImGui-SFML INTERFACE_INCLUDE_DIRECTORIES)
 target_include_directories(ImGui-SFML SYSTEM INTERFACE ${IMGUI_SFML_INCLUDE_DIRS} $<BUILD_INTERFACE:${IMGUI_DIR}/misc/cpp>)
 target_sources(ImGui-SFML PRIVATE ${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp)

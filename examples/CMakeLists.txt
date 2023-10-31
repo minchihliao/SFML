@@ -41,7 +41,7 @@ endif()
 if(SFML_BUILD_GRAPHICS AND SFML_BUILD_AUDIO)
     add_subdirectory(tennis)
 
-    if(NOT SFML_OS_IOS AND NOT SFML_OPENGL_ES AND NOT CMAKE_UNITY_BUILD)
+    if(NOT SFML_OS_IOS AND NOT SFML_OPENGL_ES)
         add_subdirectory(sound_stage)
     endif()
 endif()
