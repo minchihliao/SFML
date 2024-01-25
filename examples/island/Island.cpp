@@ -98,7 +98,7 @@ int main()
     sf::Text               hudText(font);
     sf::Text               statusText(font);
     sf::Shader             terrainShader;
-    const sf::RenderStates terrainStates(&terrainShader);
+    const sf::RenderStates terrainStates{sf::BlendAlpha, {}, {}, &terrainShader};
     sf::VertexBuffer       terrain(sf::PrimitiveType::Triangles, sf::VertexBuffer::Static);
 
     // Set up our text drawables

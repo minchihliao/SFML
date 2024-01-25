@@ -35,49 +35,14 @@ namespace sf
 ////////////////////////////////////////////////////////////
 // We cannot use the default constructor here, because it accesses BlendAlpha, which is also global (and dynamically
 // initialized). Initialization order of global objects in different translation units is not defined.
-const RenderStates RenderStates::Default(BlendMode(
-    BlendMode::SrcAlpha,
-    BlendMode::OneMinusSrcAlpha,
-    BlendMode::Add,
-    BlendMode::One,
-    BlendMode::OneMinusSrcAlpha,
-    BlendMode::Add));
-
-
-////////////////////////////////////////////////////////////
-RenderStates::RenderStates(const Transform& theTransform) : transform(theTransform)
-{
-}
-
-
-////////////////////////////////////////////////////////////
-RenderStates::RenderStates(const BlendMode& theBlendMode) : blendMode(theBlendMode)
-{
-}
-
-
-////////////////////////////////////////////////////////////
-RenderStates::RenderStates(const Texture* theTexture) : texture(theTexture)
-{
-}
-
-
-////////////////////////////////////////////////////////////
-RenderStates::RenderStates(const Shader* theShader) : shader(theShader)
-{
-}
-
-
-////////////////////////////////////////////////////////////
-RenderStates::RenderStates(const BlendMode& theBlendMode,
-                           const Transform& theTransform,
-                           const Texture*   theTexture,
-                           const Shader*    theShader) :
-blendMode(theBlendMode),
-transform(theTransform),
-texture(theTexture),
-shader(theShader)
-{
-}
+const RenderStates RenderStates::Default{BlendMode(BlendMode::SrcAlpha,
+                                                   BlendMode::OneMinusSrcAlpha,
+                                                   BlendMode::Add,
+                                                   BlendMode::One,
+                                                   BlendMode::OneMinusSrcAlpha,
+                                                   BlendMode::Add),
+                                         {},
+                                         {},
+                                         {}};
 
 } // namespace sf
