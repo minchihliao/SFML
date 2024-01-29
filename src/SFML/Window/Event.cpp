@@ -36,4 +36,11 @@ Event::Type Event::getType() const
     return static_cast<Type>(m_data.index());
 }
 
+
+////////////////////////////////////////////////////////////
+const Event::VariantType& Event::getVariant() const
+{
+    return m_data;
+}
+
 } // namespace sf

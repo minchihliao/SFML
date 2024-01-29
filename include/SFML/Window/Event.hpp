@@ -277,6 +277,31 @@ public:
         SensorChanged,          //!< A sensor value changed
     };
 
+    using VariantType = std::variant<
+        Empty,
+        Closed,
+        Resized,
+        FocusLost,
+        FocusGained,
+        TextEntered,
+        KeyPressed,
+        KeyReleased,
+        MouseWheelScrolled,
+        MouseButtonPressed,
+        MouseButtonReleased,
+        MouseMoved,
+        MouseEntered,
+        MouseLeft,
+        JoystickButtonPressed,
+        JoystickButtonReleased,
+        JoystickMoved,
+        JoystickConnected,
+        JoystickDisconnected,
+        TouchBegan,
+        TouchMoved,
+        TouchEnded,
+        SensorChanged>;
+
     ////////////////////////////////////////////////////////////
     /// \brief Default constructor
     ///
@@ -332,32 +357,20 @@ public:
     template <typename T>
     [[nodiscard]] const T* getIf() const;
 
-private:
-    using VariantType = std::variant<
-        Empty,
-        Closed,
-        Resized,
-        FocusLost,
-        FocusGained,
-        TextEntered,
-        KeyPressed,
-        KeyReleased,
-        MouseWheelScrolled,
-        MouseButtonPressed,
-        MouseButtonReleased,
-        MouseMoved,
-        MouseEntered,
-        MouseLeft,
-        JoystickButtonPressed,
-        JoystickButtonReleased,
-        JoystickMoved,
-        JoystickConnected,
-        JoystickDisconnected,
-        TouchBegan,
-        TouchMoved,
-        TouchEnded,
-        SensorChanged>;
+    ////////////////////////////////////////////////////////////
+    /// \brief Get underlying std::variant
+    ///
+    /// Useful for accessing std::variant functions like std::visit
+    ///
+    /// \return Underlying variant
+    ///
+    ////////////////////////////////////////////////////////////
+    [[nodiscard]] const VariantType& getVariant() const;
 
+private:
+    ////////////////////////////////////////////////////////////
+    // Helper functions
+    ////////////////////////////////////////////////////////////
     template <typename T, typename... Ts>
     static constexpr bool isInParameterPack(const std::variant<Ts...>&)
     {

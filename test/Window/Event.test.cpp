@@ -4,6 +4,20 @@
 
 #include <type_traits>
 
+struct Visitor
+{
+    bool operator()(const sf::Event::Closed&)
+    {
+        return true;
+    }
+
+    template <typename T>
+    bool operator()(const T&)
+    {
+        return false;
+    }
+};
+
 TEST_CASE("[Window] sf::Event")
 {
     SECTION("Type traits")
@@ -289,5 +303,11 @@ TEST_CASE("[Window] sf::Event")
         const sf::Event::SensorChanged sensorChanged;
         CHECK(sensorChanged.type == sf::Sensor::Type{});
         CHECK(sensorChanged.value == sf::Vector3f());
+    }
+
+    SECTION("getVariant()")
+    {
+        const sf::Event event = sf::Event::Closed{};
+        CHECK(std::visit(Visitor{}, event.getVariant()));
     }
 }
