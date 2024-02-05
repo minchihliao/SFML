@@ -35,8 +35,10 @@
 #include <SFML/System/MemoryInputStream.hpp>
 #include <SFML/System/Time.hpp>
 
-#include <algorithm>
 #include <ostream>
+#include <utility>
+
+#include <cstdint>
 
 
 namespace sf

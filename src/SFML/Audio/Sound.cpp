@@ -26,6 +26,7 @@
 // Headers
 ////////////////////////////////////////////////////////////
 #include <SFML/Audio/AudioDevice.hpp>
+#include <SFML/Audio/MiniaudioUtils.hpp>
 #include <SFML/Audio/Sound.hpp>
 #include <SFML/Audio/SoundBuffer.hpp>
 
@@ -34,8 +35,8 @@
 #include <miniaudio.h>
 
 #include <algorithm>
-#include <limits>
 #include <ostream>
+#include <vector>
 
 #include <cassert>
 #include <cstring>
@@ -48,39 +49,12 @@ struct Sound::Impl
     Impl()
     {
         static constexpr ma_data_source_vtable vtable{read, seek, getFormat, getCursor, getLength, setLooping, 0};
-
-        // Set this object up as a miniaudio data source
-        ma_data_source_config config = ma_data_source_config_init();
-        config.vtable                = &vtable;
-
-        if (auto result = ma_data_source_init(&config, &dataSourceBase); result != MA_SUCCESS)
-            err() << "Failed to initialize audio data source: " << ma_result_description(result) << std::endl;
-
-        // Initialize sound structure and set default settings
-        initialize();
-
-        ma_sound_set_pitch(&sound, 1.f);
-        ma_sound_set_pan(&sound, 0.f);
-        ma_sound_set_volume(&sound, 1.f);
-        ma_sound_set_spatialization_enabled(&sound, MA_TRUE);
-        ma_sound_set_position(&sound, 0.f, 0.f, 0.f);
-        ma_sound_set_direction(&sound, 0.f, 0.f, -1.f);
-        ma_sound_set_cone(&sound, degrees(360).asRadians(), degrees(360).asRadians(), 0.f); // inner = 360 degrees, outer = 360 degrees, gain = 0
-        ma_sound_set_directional_attenuation_factor(&sound, 1.f);
-        ma_sound_set_velocity(&sound, 0.f, 0.f, 0.f);
-        ma_sound_set_doppler_factor(&sound, 1.f);
-        ma_sound_set_positioning(&sound, ma_positioning_absolute);
-        ma_sound_set_min_distance(&sound, 1.f);
-        ma_sound_set_max_distance(&sound, std::numeric_limits<float>::max());
-        ma_sound_set_min_gain(&sound, 0.f);
-        ma_sound_set_max_gain(&sound, 1.f);
-        ma_sound_set_rolloff(&sound, 1.f);
+        priv::initializeMiniaudioSound(vtable, dataSourceBase, sound, [this] { initialize(); });
     }
 
     ~Impl()
     {
         ma_sound_uninit(&sound);
-
         ma_data_source_uninit(&dataSourceBase);
     }
 
@@ -88,7 +62,6 @@ struct Sound::Impl
     {
         // Initialize the sound
         auto* engine = static_cast<ma_engine*>(priv::AudioDevice::getEngine());
-
         assert(engine != nullptr);
 
         ma_sound_config soundConfig;
@@ -98,88 +71,24 @@ struct Sound::Impl
         soundConfig.endCallback = [](void*, ma_sound* soundPtr)
         {
             // Seek back to the start of the sound when it finishes playing
-            if (auto result = ma_sound_seek_to_pcm_frame(soundPtr, 0); result != MA_SUCCESS)
+            if (ma_result result = ma_sound_seek_to_pcm_frame(soundPtr, 0); result != MA_SUCCESS)
                 err() << "Failed to seek sound to frame 0: " << ma_result_description(result) << std::endl;
         };
 
-        if (auto result = ma_sound_init_ex(engine, &soundConfig, &sound); result != MA_SUCCESS)
+        if (ma_result result = ma_sound_init_ex(engine, &soundConfig, &sound); result != MA_SUCCESS)
             err() << "Failed to initialize sound: " << ma_result_description(result) << std::endl;
 
         // Because we are providing a custom data source, we have to provide the channel map ourselves
         if (buffer && !buffer->getChannelMap().empty())
         {
-            channelMap.clear();
+            soundChannelMap.clear();
 
-            for (auto channel : buffer->getChannelMap())
+            for (SoundChannel channel : buffer->getChannelMap())
             {
-                switch (channel)
-                {
-                    case SoundChannel::Unspecified:
-                        channelMap.push_back(MA_CHANNEL_NONE);
-                        break;
-                    case SoundChannel::Mono:
-                        channelMap.push_back(MA_CHANNEL_MONO);
-                        break;
-                    case SoundChannel::FrontLeft:
-                        channelMap.push_back(MA_CHANNEL_FRONT_LEFT);
-                        break;
-                    case SoundChannel::FrontRight:
-                        channelMap.push_back(MA_CHANNEL_FRONT_RIGHT);
-                        break;
-                    case SoundChannel::FrontCenter:
-                        channelMap.push_back(MA_CHANNEL_FRONT_CENTER);
-                        break;
-                    case SoundChannel::FrontLeftOfCenter:
-                        channelMap.push_back(MA_CHANNEL_FRONT_LEFT_CENTER);
-                        break;
-                    case SoundChannel::FrontRightOfCenter:
-                        channelMap.push_back(MA_CHANNEL_FRONT_RIGHT_CENTER);
-                        break;
-                    case SoundChannel::LowFrequencyEffects:
-                        channelMap.push_back(MA_CHANNEL_LFE);
-                        break;
-                    case SoundChannel::BackLeft:
-                        channelMap.push_back(MA_CHANNEL_BACK_LEFT);
-                        break;
-                    case SoundChannel::BackRight:
-                        channelMap.push_back(MA_CHANNEL_BACK_RIGHT);
-                        break;
-                    case SoundChannel::BackCenter:
-                        channelMap.push_back(MA_CHANNEL_BACK_CENTER);
-                        break;
-                    case SoundChannel::SideLeft:
-                        channelMap.push_back(MA_CHANNEL_SIDE_LEFT);
-                        break;
-                    case SoundChannel::SideRight:
-                        channelMap.push_back(MA_CHANNEL_SIDE_RIGHT);
-                        break;
-                    case SoundChannel::TopCenter:
-                        channelMap.push_back(MA_CHANNEL_TOP_CENTER);
-                        break;
-                    case SoundChannel::TopFrontLeft:
-                        channelMap.push_back(MA_CHANNEL_TOP_FRONT_LEFT);
-                        break;
-                    case SoundChannel::TopFrontRight:
-                        channelMap.push_back(MA_CHANNEL_TOP_FRONT_RIGHT);
-                        break;
-                    case SoundChannel::TopFrontCenter:
-                        channelMap.push_back(MA_CHANNEL_TOP_FRONT_CENTER);
-                        break;
-                    case SoundChannel::TopBackLeft:
-                        channelMap.push_back(MA_CHANNEL_TOP_BACK_LEFT);
-                        break;
-                    case SoundChannel::TopBackRight:
-                        channelMap.push_back(MA_CHANNEL_TOP_BACK_RIGHT);
-                        break;
-                    case SoundChannel::TopBackCenter:
-                        channelMap.push_back(MA_CHANNEL_TOP_BACK_CENTER);
-                        break;
-                    default:
-                        break;
-                }
+                soundChannelMap.push_back(priv::soundChannelToMiniaudioChannel(channel));
             }
 
-            sound.engineNode.spatializer.pChannelMapIn = channelMap.data();
+            sound.engineNode.spatializer.pChannelMapIn = soundChannelMap.data();
         }
         else
         {
@@ -189,49 +98,7 @@ struct Sound::Impl
 
     void reinitialize()
     {
-        // Save and re-apply settings
-        auto pitch                        = ma_sound_get_pitch(&sound);
-        auto pan                          = ma_sound_get_pan(&sound);
-        auto volume                       = ma_sound_get_volume(&sound);
-        auto spatializationEnabled        = ma_sound_is_spatialization_enabled(&sound);
-        auto position                     = ma_sound_get_position(&sound);
-        auto direction                    = ma_sound_get_direction(&sound);
-        auto directionalAttenuationFactor = ma_sound_get_directional_attenuation_factor(&sound);
-        auto velocity                     = ma_sound_get_velocity(&sound);
-        auto dopplerFactor                = ma_sound_get_doppler_factor(&sound);
-        auto positioning                  = ma_sound_get_positioning(&sound);
-        auto minDistance                  = ma_sound_get_min_distance(&sound);
-        auto maxDistance                  = ma_sound_get_max_distance(&sound);
-        auto minGain                      = ma_sound_get_min_gain(&sound);
-        auto maxGain                      = ma_sound_get_max_gain(&sound);
-        auto rollOff                      = ma_sound_get_rolloff(&sound);
-
-        float innerAngle;
-        float outerAngle;
-        float outerGain;
-        ma_sound_get_cone(&sound, &innerAngle, &outerAngle, &outerGain);
-
-        ma_sound_uninit(&sound);
-
-        initialize();
-
-        ma_sound_set_pitch(&sound, pitch);
-        ma_sound_set_pan(&sound, pan);
-        ma_sound_set_volume(&sound, volume);
-        ma_sound_set_spatialization_enabled(&sound, spatializationEnabled);
-        ma_sound_set_position(&sound, position.x, position.y, position.z);
-        ma_sound_set_direction(&sound, direction.x, direction.y, direction.z);
-        ma_sound_set_directional_attenuation_factor(&sound, directionalAttenuationFactor);
-        ma_sound_set_velocity(&sound, velocity.x, velocity.y, velocity.z);
-        ma_sound_set_doppler_factor(&sound, dopplerFactor);
-        ma_sound_set_positioning(&sound, positioning);
-        ma_sound_set_min_distance(&sound, minDistance);
-        ma_sound_set_max_distance(&sound, maxDistance);
-        ma_sound_set_min_gain(&sound, minGain);
-        ma_sound_set_max_gain(&sound, maxGain);
-        ma_sound_set_rolloff(&sound, rollOff);
-
-        ma_sound_set_cone(&sound, innerAngle, outerAngle, outerGain);
+        priv::reinitializeMiniaudioSound(sound, [this] { initialize(); });
     }
 
     static ma_result read(ma_data_source* dataSource, void* framesOut, ma_uint64 frameCount, ma_uint64* framesRead)
@@ -330,11 +197,11 @@ struct Sound::Impl
     // Member data
     ////////////////////////////////////////////////////////////
     ma_data_source_base dataSourceBase{}; //!< The struct that makes this object a miniaudio data source (must be first member)
-    std::vector<ma_channel> channelMap; //!< The map of position in sample frame to sound channel (miniaudio channels)
-    ma_sound                sound{};    //!< The sound
-    std::size_t             cursor{};   //!< The current playing position
-    bool                    looping{};  //!< True if we are looping the sound
-    const SoundBuffer*      buffer{};   //!< Sound buffer bound to the source
+    std::vector<ma_channel> soundChannelMap; //!< The map of position in sample frame to sound channel (miniaudio channels)
+    ma_sound           sound{};              //!< The sound
+    std::size_t        cursor{};             //!< The current playing position
+    bool               looping{};            //!< True if we are looping the sound
+    const SoundBuffer* buffer{};             //!< Sound buffer bound to the source
 };
 
 
@@ -367,7 +234,7 @@ Sound::~Sound()
 ////////////////////////////////////////////////////////////
 void Sound::play()
 {
-    if (auto result = ma_sound_start(&m_impl->sound); result != MA_SUCCESS)
+    if (ma_result result = ma_sound_start(&m_impl->sound); result != MA_SUCCESS)
         err() << "Failed to start playing sound: " << ma_result_description(result) << std::endl;
 }
 
@@ -375,7 +242,7 @@ void Sound::play()
 ////////////////////////////////////////////////////////////
 void Sound::pause()
 {
-    if (auto result = ma_sound_stop(&m_impl->sound); result != MA_SUCCESS)
+    if (ma_result result = ma_sound_stop(&m_impl->sound); result != MA_SUCCESS)
         err() << "Failed to stop playing sound: " << ma_result_description(result) << std::endl;
 }
 
@@ -383,7 +250,7 @@ void Sound::pause()
 ////////////////////////////////////////////////////////////
 void Sound::stop()
 {
-    if (auto result = ma_sound_stop(&m_impl->sound); result != MA_SUCCESS)
+    if (ma_result result = ma_sound_stop(&m_impl->sound); result != MA_SUCCESS)
     {
         err() << "Failed to stop playing sound: " << ma_result_description(result) << std::endl;
     }
@@ -425,16 +292,7 @@ void Sound::setLoop(bool loop)
 ////////////////////////////////////////////////////////////
 void Sound::setPlayingOffset(Time timeOffset)
 {
-    ma_uint32 sampleRate{};
-
-    if (auto result = ma_sound_get_data_format(&m_impl->sound, nullptr, nullptr, &sampleRate, nullptr, 0);
-        result != MA_SUCCESS)
-        err() << "Failed to get sound data format: " << ma_result_description(result) << std::endl;
-
-    const auto frameIndex = static_cast<ma_uint64>(timeOffset.asSeconds() * static_cast<float>(sampleRate));
-
-    if (auto result = ma_sound_seek_to_pcm_frame(&m_impl->sound, frameIndex); result != MA_SUCCESS)
-        err() << "Failed to seek sound to pcm frame: " << ma_result_description(result) << std::endl;
+    const auto frameIndex = priv::getMiniaudioFrameIndex(m_impl->sound, timeOffset);
 
     if (m_impl->buffer)
         m_impl->cursor = static_cast<std::size_t>(frameIndex * m_impl->buffer->getChannelCount());
@@ -462,15 +320,7 @@ Time Sound::getPlayingOffset() const
     if (!m_impl->buffer || m_impl->buffer->getChannelCount() == 0 || m_impl->buffer->getSampleRate() == 0)
         return {};
 
-    auto cursor = 0.f;
-
-    if (auto result = ma_sound_get_cursor_in_seconds(&m_impl->sound, &cursor); result != MA_SUCCESS)
-    {
-        err() << "Failed to get sound cursor: " << ma_result_description(result) << std::endl;
-        return {};
-    }
-
-    return seconds(cursor);
+    return priv::getMiniaudioPlayingOffset(m_impl->sound);
 }
 
 

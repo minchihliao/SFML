@@ -11,6 +11,8 @@ set(SRC
     ${SRCROOT}/Listener.cpp
     ${INCROOT}/Listener.hpp
     ${SRCROOT}/Miniaudio.cpp
+    ${SRCROOT}/MiniaudioUtils.hpp
+    ${SRCROOT}/MiniaudioUtils.cpp
     ${SRCROOT}/Music.cpp
     ${INCROOT}/Music.hpp
     ${SRCROOT}/Sound.cpp

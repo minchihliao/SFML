@@ -34,6 +34,8 @@
 #include <filesystem>
 #include <vector>
 
+#include <cstdint>
+
 
 namespace sf
 {

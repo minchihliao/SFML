@@ -32,10 +32,7 @@
 
 #include <SFML/System/Err.hpp>
 
-#include <exception>
-#include <memory>
 #include <ostream>
-#include <string>
 #include <utility>
 
 

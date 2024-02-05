@@ -296,8 +296,8 @@ private:
     unsigned int              m_channelCount{1};                //!< Number of channels of the sound
     unsigned int              m_sampleRate{44100};              //!< Number of samples per second
     std::vector<SoundChannel> m_channelMap{SoundChannel::Mono}; //!< The map of position in sample frame to sound channel
-    Time                      m_duration;                       //!< Sound duration
-    mutable SoundList         m_sounds;                         //!< List of sounds that are using this buffer
+    Time              m_duration;                               //!< Sound duration
+    mutable SoundList m_sounds;                                 //!< List of sounds that are using this buffer
 };
 
 } // namespace sf
