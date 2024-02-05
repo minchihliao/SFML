@@ -26,14 +26,10 @@
 ////////////////////////////////////////////////////////////
 // Headers
 ////////////////////////////////////////////////////////////
-#include <SFML/Graphics/Color.hpp>
 #include <SFML/Graphics/GLCheck.hpp>
 #include <SFML/Graphics/GLExtensions.hpp>
 #include <SFML/Graphics/Shader.hpp>
 #include <SFML/Graphics/Texture.hpp>
-#include <SFML/Graphics/Transform.hpp>
-
-#include <SFML/Window/Context.hpp>
 
 #include <SFML/System/Err.hpp>
 #include <SFML/System/InputStream.hpp>
@@ -44,6 +40,8 @@
 #include <ostream>
 #include <utility>
 #include <vector>
+
+#include <cstdint>
 
 #ifndef SFML_OPENGL_ES
 

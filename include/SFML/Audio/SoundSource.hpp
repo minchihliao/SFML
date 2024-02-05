@@ -34,8 +34,6 @@
 #include <SFML/System/Angle.hpp>
 #include <SFML/System/Vector3.hpp>
 
-#include <memory>
-
 
 namespace sf
 {

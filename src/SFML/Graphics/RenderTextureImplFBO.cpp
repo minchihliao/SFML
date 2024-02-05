@@ -35,8 +35,9 @@
 
 #include <SFML/System/Err.hpp>
 
-#include <mutex>
+#include <memory>
 #include <ostream>
+#include <utility>
 
 
 namespace sf::priv

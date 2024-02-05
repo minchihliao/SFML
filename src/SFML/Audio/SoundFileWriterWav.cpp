@@ -135,26 +135,25 @@ bool SoundFileWriterWav::open(const std::filesystem::path&     filename,
             SoundChannel  channel;
         };
 
-        std::vector<SupportedChannel> targetChannelMap;
-
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_FRONT_LEFT, SoundChannel::FrontLeft});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_FRONT_RIGHT, SoundChannel::FrontRight});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_FRONT_CENTER, SoundChannel::FrontCenter});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_LOW_FREQUENCY, SoundChannel::LowFrequencyEffects});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_BACK_LEFT, SoundChannel::BackLeft});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_BACK_RIGHT, SoundChannel::BackRight});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_FRONT_LEFT_OF_CENTER, SoundChannel::FrontLeftOfCenter});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_FRONT_RIGHT_OF_CENTER, SoundChannel::FrontRightOfCenter});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_BACK_CENTER, SoundChannel::BackCenter});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_SIDE_LEFT, SoundChannel::SideLeft});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_SIDE_RIGHT, SoundChannel::SideRight});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_TOP_CENTER, SoundChannel::TopCenter});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_TOP_FRONT_LEFT, SoundChannel::TopFrontLeft});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_TOP_FRONT_CENTER, SoundChannel::TopFrontCenter});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_TOP_FRONT_RIGHT, SoundChannel::TopFrontRight});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_TOP_BACK_LEFT, SoundChannel::TopBackLeft});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_TOP_BACK_CENTER, SoundChannel::TopBackCenter});
-        targetChannelMap.push_back(SupportedChannel{SPEAKER_TOP_BACK_RIGHT, SoundChannel::TopBackRight});
+        std::vector<SupportedChannel>
+            targetChannelMap{{SPEAKER_FRONT_LEFT, SoundChannel::FrontLeft},
+                             {SPEAKER_FRONT_RIGHT, SoundChannel::FrontRight},
+                             {SPEAKER_FRONT_CENTER, SoundChannel::FrontCenter},
+                             {SPEAKER_LOW_FREQUENCY, SoundChannel::LowFrequencyEffects},
+                             {SPEAKER_BACK_LEFT, SoundChannel::BackLeft},
+                             {SPEAKER_BACK_RIGHT, SoundChannel::BackRight},
+                             {SPEAKER_FRONT_LEFT_OF_CENTER, SoundChannel::FrontLeftOfCenter},
+                             {SPEAKER_FRONT_RIGHT_OF_CENTER, SoundChannel::FrontRightOfCenter},
+                             {SPEAKER_BACK_CENTER, SoundChannel::BackCenter},
+                             {SPEAKER_SIDE_LEFT, SoundChannel::SideLeft},
+                             {SPEAKER_SIDE_RIGHT, SoundChannel::SideRight},
+                             {SPEAKER_TOP_CENTER, SoundChannel::TopCenter},
+                             {SPEAKER_TOP_FRONT_LEFT, SoundChannel::TopFrontLeft},
+                             {SPEAKER_TOP_FRONT_CENTER, SoundChannel::TopFrontCenter},
+                             {SPEAKER_TOP_FRONT_RIGHT, SoundChannel::TopFrontRight},
+                             {SPEAKER_TOP_BACK_LEFT, SoundChannel::TopBackLeft},
+                             {SPEAKER_TOP_BACK_CENTER, SoundChannel::TopBackCenter},
+                             {SPEAKER_TOP_BACK_RIGHT, SoundChannel::TopBackRight}};
 
         // Check for duplicate channel entries
         {
@@ -182,7 +181,7 @@ bool SoundFileWriterWav::open(const std::filesystem::path&     filename,
         }
 
         // Verify that all the input channels exist in the target channel map
-        for (auto channel : channelMap)
+        for (SoundChannel channel : channelMap)
         {
             if (std::find_if(targetChannelMap.begin(),
                              targetChannelMap.end(),

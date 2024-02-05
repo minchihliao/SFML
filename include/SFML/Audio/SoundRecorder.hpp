@@ -31,8 +31,6 @@
 
 #include <SFML/Audio/SoundChannel.hpp>
 
-#include <SFML/System/Time.hpp>
-
 #include <memory>
 #include <string>
 #include <vector>
