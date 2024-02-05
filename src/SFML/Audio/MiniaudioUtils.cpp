@@ -198,7 +198,7 @@ void MiniaudioUtils::initializeDataSource(ma_data_source_base& dataSourceBase, c
     ma_data_source_config config = ma_data_source_config_init();
     config.vtable                = &vtable;
 
-    if (ma_result result = ma_data_source_init(&config, &dataSourceBase); result != MA_SUCCESS)
+    if (const ma_result result = ma_data_source_init(&config, &dataSourceBase); result != MA_SUCCESS)
         err() << "Failed to initialize audio data source: " << ma_result_description(result) << std::endl;
 }
 
@@ -208,7 +208,7 @@ Time MiniaudioUtils::getPlayingOffset(ma_sound& sound)
 {
     float cursor = 0.f;
 
-    if (ma_result result = ma_sound_get_cursor_in_seconds(&sound, &cursor); result != MA_SUCCESS)
+    if (const ma_result result = ma_sound_get_cursor_in_seconds(&sound, &cursor); result != MA_SUCCESS)
     {
         err() << "Failed to get sound cursor: " << ma_result_description(result) << std::endl;
         return {};
@@ -223,12 +223,13 @@ ma_uint64 MiniaudioUtils::getFrameIndex(ma_sound& sound, Time timeOffset)
 {
     ma_uint32 sampleRate{};
 
-    if (ma_result result = ma_sound_get_data_format(&sound, nullptr, nullptr, &sampleRate, nullptr, 0); result != MA_SUCCESS)
+    if (const ma_result result = ma_sound_get_data_format(&sound, nullptr, nullptr, &sampleRate, nullptr, 0);
+        result != MA_SUCCESS)
         err() << "Failed to get sound data format: " << ma_result_description(result) << std::endl;
 
     const auto frameIndex = static_cast<ma_uint64>(timeOffset.asSeconds() * static_cast<float>(sampleRate));
 
-    if (ma_result result = ma_sound_seek_to_pcm_frame(&sound, frameIndex); result != MA_SUCCESS)
+    if (const ma_result result = ma_sound_seek_to_pcm_frame(&sound, frameIndex); result != MA_SUCCESS)
         err() << "Failed to seek sound to pcm frame: " << ma_result_description(result) << std::endl;
 
     return frameIndex;

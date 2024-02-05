@@ -181,7 +181,7 @@ bool SoundFileWriterWav::open(const std::filesystem::path&     filename,
         }
 
         // Verify that all the input channels exist in the target channel map
-        for (SoundChannel channel : channelMap)
+        for (const SoundChannel channel : channelMap)
         {
             if (std::find_if(targetChannelMap.begin(),
                              targetChannelMap.end(),

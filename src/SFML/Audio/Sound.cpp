@@ -71,11 +71,11 @@ struct Sound::Impl
         soundConfig.endCallback = [](void*, ma_sound* soundPtr)
         {
             // Seek back to the start of the sound when it finishes playing
-            if (ma_result result = ma_sound_seek_to_pcm_frame(soundPtr, 0); result != MA_SUCCESS)
+            if (const ma_result result = ma_sound_seek_to_pcm_frame(soundPtr, 0); result != MA_SUCCESS)
                 err() << "Failed to seek sound to frame 0: " << ma_result_description(result) << std::endl;
         };
 
-        if (ma_result result = ma_sound_init_ex(engine, &soundConfig, &sound); result != MA_SUCCESS)
+        if (const ma_result result = ma_sound_init_ex(engine, &soundConfig, &sound); result != MA_SUCCESS)
             err() << "Failed to initialize sound: " << ma_result_description(result) << std::endl;
 
         // Because we are providing a custom data source, we have to provide the channel map ourselves
@@ -83,7 +83,7 @@ struct Sound::Impl
         {
             soundChannelMap.clear();
 
-            for (SoundChannel channel : buffer->getChannelMap())
+            for (const SoundChannel channel : buffer->getChannelMap())
             {
                 soundChannelMap.push_back(priv::MiniaudioUtils::soundChannelToMiniaudioChannel(channel));
             }
@@ -234,7 +234,7 @@ Sound::~Sound()
 ////////////////////////////////////////////////////////////
 void Sound::play()
 {
-    if (ma_result result = ma_sound_start(&m_impl->sound); result != MA_SUCCESS)
+    if (const ma_result result = ma_sound_start(&m_impl->sound); result != MA_SUCCESS)
         err() << "Failed to start playing sound: " << ma_result_description(result) << std::endl;
 }
 
@@ -242,7 +242,7 @@ void Sound::play()
 ////////////////////////////////////////////////////////////
 void Sound::pause()
 {
-    if (ma_result result = ma_sound_stop(&m_impl->sound); result != MA_SUCCESS)
+    if (const ma_result result = ma_sound_stop(&m_impl->sound); result != MA_SUCCESS)
         err() << "Failed to stop playing sound: " << ma_result_description(result) << std::endl;
 }
 
@@ -250,7 +250,7 @@ void Sound::pause()
 ////////////////////////////////////////////////////////////
 void Sound::stop()
 {
-    if (ma_result result = ma_sound_stop(&m_impl->sound); result != MA_SUCCESS)
+    if (const ma_result result = ma_sound_stop(&m_impl->sound); result != MA_SUCCESS)
     {
         err() << "Failed to stop playing sound: " << ma_result_description(result) << std::endl;
     }
