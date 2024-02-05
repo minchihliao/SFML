@@ -37,7 +37,8 @@
 #include <memory>
 #include <vector>
 
-#include <cstdlib>
+#include <cstddef>
+#include <cstdint>
 
 
 namespace sf

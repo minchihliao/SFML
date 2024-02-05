@@ -36,6 +36,8 @@
 #include <mutex>
 #include <vector>
 
+#include <cstdint>
+
 
 namespace sf
 {

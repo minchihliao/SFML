@@ -59,7 +59,7 @@ public:
     /// good compromise.
     ///
     ////////////////////////////////////////////////////////////
-    enum Usage
+    enum class Usage
     {
         Stream,  //!< Constantly changing data
         Dynamic, //!< Occasionally changing data
@@ -245,7 +245,7 @@ public:
     /// This function defines how the vertices must be interpreted
     /// when it's time to draw them.
     ///
-    /// The default primitive type is sf::Points.
+    /// The default primitive type is sf::PrimitiveType::Points.
     ///
     /// \param type Type of primitive
     ///
@@ -270,7 +270,7 @@ public:
     /// to be updated with new data for the usage specifier to
     /// take effect.
     ///
-    /// The default primitive type is sf::VertexBuffer::Stream.
+    /// The default usage type is sf::VertexBuffer::Usage::Stream.
     ///
     /// \param usage Usage specifier
     ///
@@ -336,7 +336,7 @@ private:
     unsigned int  m_buffer{};                             //!< Internal buffer identifier
     std::size_t   m_size{};                               //!< Size in Vertices of the currently allocated buffer
     PrimitiveType m_primitiveType{PrimitiveType::Points}; //!< Type of primitives to draw
-    Usage         m_usage{Stream};                        //!< How this vertex buffer is to be used
+    Usage         m_usage{Usage::Stream};                 //!< How this vertex buffer is to be used
 };
 
 ////////////////////////////////////////////////////////////
@@ -401,7 +401,7 @@ SFML_GRAPHICS_API void swap(VertexBuffer& left, VertexBuffer& right) noexcept;
 /// \code
 /// sf::Vertex vertices[15];
 /// ...
-/// sf::VertexBuffer triangles(sf::Triangles);
+/// sf::VertexBuffer triangles(sf::PrimitiveType::Triangles);
 /// triangles.create(15);
 /// triangles.update(vertices);
 /// ...

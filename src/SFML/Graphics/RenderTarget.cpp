@@ -27,6 +27,7 @@
 ////////////////////////////////////////////////////////////
 #include <SFML/Graphics/Drawable.hpp>
 #include <SFML/Graphics/GLCheck.hpp>
+#include <SFML/Graphics/GLExtensions.hpp>
 #include <SFML/Graphics/RenderTarget.hpp>
 #include <SFML/Graphics/Shader.hpp>
 #include <SFML/Graphics/Texture.hpp>
@@ -91,45 +92,45 @@ std::uint32_t factorToGlConstant(sf::BlendMode::Factor blendFactor)
     // clang-format off
     switch (blendFactor)
     {
-        case sf::BlendMode::Zero:             return GL_ZERO;
-        case sf::BlendMode::One:              return GL_ONE;
-        case sf::BlendMode::SrcColor:         return GL_SRC_COLOR;
-        case sf::BlendMode::OneMinusSrcColor: return GL_ONE_MINUS_SRC_COLOR;
-        case sf::BlendMode::DstColor:         return GL_DST_COLOR;
-        case sf::BlendMode::OneMinusDstColor: return GL_ONE_MINUS_DST_COLOR;
-        case sf::BlendMode::SrcAlpha:         return GL_SRC_ALPHA;
-        case sf::BlendMode::OneMinusSrcAlpha: return GL_ONE_MINUS_SRC_ALPHA;
-        case sf::BlendMode::DstAlpha:         return GL_DST_ALPHA;
-        case sf::BlendMode::OneMinusDstAlpha: return GL_ONE_MINUS_DST_ALPHA;
+        case sf::BlendMode::Factor::Zero:             return GL_ZERO;
+        case sf::BlendMode::Factor::One:              return GL_ONE;
+        case sf::BlendMode::Factor::SrcColor:         return GL_SRC_COLOR;
+        case sf::BlendMode::Factor::OneMinusSrcColor: return GL_ONE_MINUS_SRC_COLOR;
+        case sf::BlendMode::Factor::DstColor:         return GL_DST_COLOR;
+        case sf::BlendMode::Factor::OneMinusDstColor: return GL_ONE_MINUS_DST_COLOR;
+        case sf::BlendMode::Factor::SrcAlpha:         return GL_SRC_ALPHA;
+        case sf::BlendMode::Factor::OneMinusSrcAlpha: return GL_ONE_MINUS_SRC_ALPHA;
+        case sf::BlendMode::Factor::DstAlpha:         return GL_DST_ALPHA;
+        case sf::BlendMode::Factor::OneMinusDstAlpha: return GL_ONE_MINUS_DST_ALPHA;
     }
     // clang-format on
 
-    sf::err() << "Invalid value for sf::BlendMode::Factor! Fallback to sf::BlendMode::Zero." << std::endl;
+    sf::err() << "Invalid value for sf::BlendMode::Factor! Fallback to sf::BlendMode::Factor::Zero." << std::endl;
     assert(false);
     return GL_ZERO;
 }
 
 
-// Convert an sf::BlendMode::BlendEquation constant to the corresponding OpenGL constant.
+// Convert an sf::BlendMode::Equation constant to the corresponding OpenGL constant.
 std::uint32_t equationToGlConstant(sf::BlendMode::Equation blendEquation)
 {
     switch (blendEquation)
     {
-        case sf::BlendMode::Add:
+        case sf::BlendMode::Equation::Add:
             return GLEXT_GL_FUNC_ADD;
-        case sf::BlendMode::Subtract:
+        case sf::BlendMode::Equation::Subtract:
             if (GLEXT_blend_subtract)
                 return GLEXT_GL_FUNC_SUBTRACT;
             break;
-        case sf::BlendMode::ReverseSubtract:
+        case sf::BlendMode::Equation::ReverseSubtract:
             if (GLEXT_blend_subtract)
                 return GLEXT_GL_FUNC_REVERSE_SUBTRACT;
             break;
-        case sf::BlendMode::Min:
+        case sf::BlendMode::Equation::Min:
             if (GLEXT_blend_minmax)
                 return GLEXT_GL_MIN;
             break;
-        case sf::BlendMode::Max:
+        case sf::BlendMode::Equation::Max:
             if (GLEXT_blend_minmax)
                 return GLEXT_GL_MAX;
             break;
@@ -139,13 +140,57 @@ std::uint32_t equationToGlConstant(sf::BlendMode::Equation blendEquation)
     if (!warned)
     {
         sf::err() << "OpenGL extension EXT_blend_minmax or EXT_blend_subtract unavailable" << '\n'
-                  << "Some blending equations will fallback to sf::BlendMode::Add" << '\n'
+                  << "Some blending equations will fallback to sf::BlendMode::Equation::Add" << '\n'
                   << "Ensure that hardware acceleration is enabled if available" << std::endl;
 
         warned = true;
     }
 
     return GLEXT_GL_FUNC_ADD;
+}
+
+
+// Convert an UpdateOperation constant to the corresponding OpenGL constant.
+std::uint32_t stencilOperationToGlConstant(sf::StencilUpdateOperation operation)
+{
+    // clang-format off
+    switch (operation)
+    {
+        case sf::StencilUpdateOperation::Keep:      return GL_KEEP;
+        case sf::StencilUpdateOperation::Zero:      return GL_ZERO;
+        case sf::StencilUpdateOperation::Replace:   return GL_REPLACE;
+        case sf::StencilUpdateOperation::Increment: return GL_INCR;
+        case sf::StencilUpdateOperation::Decrement: return GL_DECR;
+        case sf::StencilUpdateOperation::Invert:    return GL_INVERT;
+    }
+    // clang-format on
+
+    sf::err() << "Invalid value for sf::StencilUpdateOperation! Fallback to sf::StencilMode::Keep." << std::endl;
+    assert(false);
+    return GL_KEEP;
+}
+
+
+// Convert a Comparison constant to the corresponding OpenGL constant.
+std::uint32_t stencilFunctionToGlConstant(sf::StencilComparison comparison)
+{
+    // clang-format off
+    switch (comparison)
+    {
+        case sf::StencilComparison::Never:        return GL_NEVER;
+        case sf::StencilComparison::Less:         return GL_LESS;
+        case sf::StencilComparison::LessEqual:    return GL_LEQUAL;
+        case sf::StencilComparison::Greater:      return GL_GREATER;
+        case sf::StencilComparison::GreaterEqual: return GL_GEQUAL;
+        case sf::StencilComparison::Equal:        return GL_EQUAL;
+        case sf::StencilComparison::NotEqual:     return GL_NOTEQUAL;
+        case sf::StencilComparison::Always:       return GL_ALWAYS;
+    }
+    // clang-format on
+
+    sf::err() << "Invalid value for sf::StencilComparison! Fallback to sf::StencilMode::Always." << std::endl;
+    assert(false);
+    return GL_ALWAYS;
 }
 } // namespace RenderTargetImpl
 } // namespace
@@ -167,6 +212,43 @@ void RenderTarget::clear(const Color& color)
 
         glCheck(glClearColor(color.r / 255.f, color.g / 255.f, color.b / 255.f, color.a / 255.f));
         glCheck(glClear(GL_COLOR_BUFFER_BIT));
+    }
+}
+
+
+////////////////////////////////////////////////////////////
+void RenderTarget::clearStencil(StencilValue stencilValue)
+{
+    if (RenderTargetImpl::isActive(m_id) || setActive(true))
+    {
+        // Unbind texture to fix RenderTexture preventing clear
+        applyTexture(nullptr);
+
+        // Apply the view (scissor testing can affect clearing)
+        if (!m_cache.enable || m_cache.viewChanged)
+            applyCurrentView();
+
+        glCheck(glClearStencil(static_cast<int>(stencilValue.value)));
+        glCheck(glClear(GL_STENCIL_BUFFER_BIT));
+    }
+}
+
+
+////////////////////////////////////////////////////////////
+void RenderTarget::clear(const Color& color, StencilValue stencilValue)
+{
+    if (RenderTargetImpl::isActive(m_id) || setActive(true))
+    {
+        // Unbind texture to fix RenderTexture preventing clear
+        applyTexture(nullptr);
+
+        // Apply the view (scissor testing can affect clearing)
+        if (!m_cache.enable || m_cache.viewChanged)
+            applyCurrentView();
+
+        glCheck(glClearColor(color.r / 255.f, color.g / 255.f, color.b / 255.f, color.a / 255.f));
+        glCheck(glClearStencil(static_cast<int>(stencilValue.value)));
+        glCheck(glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
     }
 }
 
@@ -519,6 +601,7 @@ void RenderTarget::resetGLStates()
         // Define the default OpenGL states
         glCheck(glDisable(GL_CULL_FACE));
         glCheck(glDisable(GL_LIGHTING));
+        glCheck(glDisable(GL_STENCIL_TEST));
         glCheck(glDisable(GL_DEPTH_TEST));
         glCheck(glDisable(GL_ALPHA_TEST));
         glCheck(glDisable(GL_SCISSOR_TEST));
@@ -529,11 +612,14 @@ void RenderTarget::resetGLStates()
         glCheck(glEnableClientState(GL_VERTEX_ARRAY));
         glCheck(glEnableClientState(GL_COLOR_ARRAY));
         glCheck(glEnableClientState(GL_TEXTURE_COORD_ARRAY));
+        glCheck(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE));
         m_cache.scissorEnabled = false;
+        m_cache.stencilEnabled = false;
         m_cache.glStatesSet    = true;
 
         // Apply the default SFML states
         applyBlendMode(BlendAlpha);
+        applyStencilMode(StencilMode());
         applyTexture(nullptr);
         if (shaderAvailable)
             applyShader(nullptr);
@@ -641,7 +727,7 @@ void RenderTarget::applyBlendMode(const BlendMode& mode)
             glCheck(GLEXT_glBlendEquation(equationToGlConstant(mode.colorEquation)));
         }
     }
-    else if ((mode.colorEquation != BlendMode::Add) || (mode.alphaEquation != BlendMode::Add))
+    else if ((mode.colorEquation != BlendMode::Equation::Add) || (mode.alphaEquation != BlendMode::Equation::Add))
     {
         static bool warned = false;
 
@@ -660,6 +746,43 @@ void RenderTarget::applyBlendMode(const BlendMode& mode)
     }
 
     m_cache.lastBlendMode = mode;
+}
+
+
+////////////////////////////////////////////////////////////
+void RenderTarget::applyStencilMode(const StencilMode& mode)
+{
+    using RenderTargetImpl::stencilFunctionToGlConstant;
+    using RenderTargetImpl::stencilOperationToGlConstant;
+
+    // Fast path if we have a default (disabled) stencil mode
+    if (mode == StencilMode())
+    {
+        if (m_cache.stencilEnabled)
+        {
+            glCheck(glDisable(GL_STENCIL_TEST));
+            glCheck(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE));
+
+            m_cache.stencilEnabled = false;
+        }
+    }
+    else
+    {
+        // Apply the stencil mode
+        if (!m_cache.stencilEnabled)
+            glCheck(glEnable(GL_STENCIL_TEST));
+
+        glCheck(glStencilOp(GL_KEEP,
+                            stencilOperationToGlConstant(mode.stencilUpdateOperation),
+                            stencilOperationToGlConstant(mode.stencilUpdateOperation)));
+        glCheck(glStencilFunc(stencilFunctionToGlConstant(mode.stencilComparison),
+                              static_cast<int>(mode.stencilReference.value),
+                              mode.stencilMask.value));
+
+        m_cache.stencilEnabled = true;
+    }
+
+    m_cache.lastStencilMode = mode;
 }
 
 
@@ -732,6 +855,14 @@ void RenderTarget::setupDraw(bool useVertexCache, const RenderStates& states)
     if (!m_cache.enable || (states.blendMode != m_cache.lastBlendMode))
         applyBlendMode(states.blendMode);
 
+    // Apply the stencil mode
+    if (!m_cache.enable || (states.stencilMode != m_cache.lastStencilMode))
+        applyStencilMode(states.stencilMode);
+
+    // Mask the color buffer off if necessary
+    if (states.stencilMode.stencilOnly)
+        glCheck(glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE));
+
     // Apply the texture
     if (!m_cache.enable || (states.texture && states.texture->m_fboAttachment))
     {
@@ -779,6 +910,10 @@ void RenderTarget::cleanupDraw(const RenderStates& states)
     // This prevents a bug where some drivers do not clear RenderTextures properly.
     if (states.texture && states.texture->m_fboAttachment)
         applyTexture(nullptr);
+
+    // Mask the color buffer back on if necessary
+    if (states.stencilMode.stencilOnly)
+        glCheck(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE));
 
     // Re-enable the cache at the end of the draw if it was disabled
     m_cache.enable = true;

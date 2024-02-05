@@ -33,8 +33,6 @@
 
 #include <memory>
 
-#include <cstdlib>
-
 
 namespace sf
 {
