@@ -29,94 +29,50 @@
 ////////////////////////////////////////////////////////////
 #include <SFML/Audio/SoundChannel.hpp>
 
-#include <SFML/System/Err.hpp>
-#include <SFML/System/Time.hpp>
-
 #include <miniaudio.h>
 
+#include <functional>
+
+
+////////////////////////////////////////////////////////////
+// Forward declarations
+////////////////////////////////////////////////////////////
+
+namespace sf
+{
+class Time;
+}
+
+
+////////////////////////////////////////////////////////////
+// Declaration of 'MiniaudioUtils'
+////////////////////////////////////////////////////////////
 
 namespace sf::priv
 {
 ////////////////////////////////////////////////////////////
-[[nodiscard]] ma_channel soundChannelToMiniaudioChannel(sf::SoundChannel soundChannel);
-
-
-////////////////////////////////////////////////////////////
-void initializeSoundWithDefaultSettings(ma_sound& sound);
-
-
-////////////////////////////////////////////////////////////
-template <typename F>
-void reinitializeMiniaudioSound(ma_sound& sound, F initializeFn)
+class MiniaudioUtils
 {
-    // Save and re-apply settings
-    const float          pitch                        = ma_sound_get_pitch(&sound);
-    const float          pan                          = ma_sound_get_pan(&sound);
-    const float          volume                       = ma_sound_get_volume(&sound);
-    const ma_bool32      spatializationEnabled        = ma_sound_is_spatialization_enabled(&sound);
-    const ma_vec3f       position                     = ma_sound_get_position(&sound);
-    const ma_vec3f       direction                    = ma_sound_get_direction(&sound);
-    const float          directionalAttenuationFactor = ma_sound_get_directional_attenuation_factor(&sound);
-    const ma_vec3f       velocity                     = ma_sound_get_velocity(&sound);
-    const float          dopplerFactor                = ma_sound_get_doppler_factor(&sound);
-    const ma_positioning positioning                  = ma_sound_get_positioning(&sound);
-    const float          minDistance                  = ma_sound_get_min_distance(&sound);
-    const float          maxDistance                  = ma_sound_get_max_distance(&sound);
-    const float          minGain                      = ma_sound_get_min_gain(&sound);
-    const float          maxGain                      = ma_sound_get_max_gain(&sound);
-    const float          rollOff                      = ma_sound_get_rolloff(&sound);
+private:
+    struct SavedSettings;
 
-    float innerAngle;
-    float outerAngle;
-    float outerGain;
-    ma_sound_get_cone(&sound, &innerAngle, &outerAngle, &outerGain);
+    [[nodiscard]] static SavedSettings saveSettings(const ma_sound& sound);
+    static void                        applySettings(ma_sound& sound, const SavedSettings& savedSettings);
 
-    ma_sound_uninit(&sound);
+    static void initializeSoundWithDefaultSettings(ma_sound& sound);
+    static void initializeDataSource(ma_data_source_base& dataSourceBase, const ma_data_source_vtable& vtable);
 
-    initializeFn();
+public:
+    [[nodiscard]] static ma_channel soundChannelToMiniaudioChannel(sf::SoundChannel soundChannel);
+    [[nodiscard]] static Time       getPlayingOffset(ma_sound& sound);
+    [[nodiscard]] static ma_uint64  getFrameIndex(ma_sound& sound, Time timeOffset);
 
-    ma_sound_set_pitch(&sound, pitch);
-    ma_sound_set_pan(&sound, pan);
-    ma_sound_set_volume(&sound, volume);
-    ma_sound_set_spatialization_enabled(&sound, spatializationEnabled);
-    ma_sound_set_position(&sound, position.x, position.y, position.z);
-    ma_sound_set_direction(&sound, direction.x, direction.y, direction.z);
-    ma_sound_set_directional_attenuation_factor(&sound, directionalAttenuationFactor);
-    ma_sound_set_velocity(&sound, velocity.x, velocity.y, velocity.z);
-    ma_sound_set_doppler_factor(&sound, dopplerFactor);
-    ma_sound_set_positioning(&sound, positioning);
-    ma_sound_set_min_distance(&sound, minDistance);
-    ma_sound_set_max_distance(&sound, maxDistance);
-    ma_sound_set_min_gain(&sound, minGain);
-    ma_sound_set_max_gain(&sound, maxGain);
-    ma_sound_set_rolloff(&sound, rollOff);
+    static void reinitializeSound(ma_sound& sound, const std::function<void()>& initializeFn);
 
-    ma_sound_set_cone(&sound, innerAngle, outerAngle, outerGain);
-}
-
-
-////////////////////////////////////////////////////////////
-template <typename F>
-void initializeMiniaudioSound(const ma_data_source_vtable& vtable, ma_data_source_base& dataSourceBase, ma_sound& sound, F initializeFn)
-{
-    // Set this object up as a miniaudio data source
-    ma_data_source_config config = ma_data_source_config_init();
-    config.vtable                = &vtable;
-
-    if (ma_result result = ma_data_source_init(&config, &dataSourceBase); result != MA_SUCCESS)
-        err() << "Failed to initialize audio data source: " << ma_result_description(result) << std::endl;
-
-    // Initialize sound structure and set default settings
-    initializeFn();
-    initializeSoundWithDefaultSettings(sound);
-}
-
-
-////////////////////////////////////////////////////////////
-Time getMiniaudioPlayingOffset(ma_sound& sound);
-
-
-////////////////////////////////////////////////////////////
-ma_uint64 getMiniaudioFrameIndex(ma_sound& sound, Time timeOffset);
+    static void initializeSound(const ma_data_source_vtable& vtable,
+                                ma_data_source_base&         dataSourceBase,
+                                ma_sound&                    sound,
+                                const std::function<void()>& initializeFn);
+};
 
 } // namespace sf::priv

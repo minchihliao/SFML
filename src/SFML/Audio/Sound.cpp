@@ -49,7 +49,7 @@ struct Sound::Impl
     Impl()
     {
         static constexpr ma_data_source_vtable vtable{read, seek, getFormat, getCursor, getLength, setLooping, 0};
-        priv::initializeMiniaudioSound(vtable, dataSourceBase, sound, [this] { initialize(); });
+        priv::MiniaudioUtils::initializeSound(vtable, dataSourceBase, sound, [this] { initialize(); });
     }
 
     ~Impl()
@@ -85,7 +85,7 @@ struct Sound::Impl
 
             for (SoundChannel channel : buffer->getChannelMap())
             {
-                soundChannelMap.push_back(priv::soundChannelToMiniaudioChannel(channel));
+                soundChannelMap.push_back(priv::MiniaudioUtils::soundChannelToMiniaudioChannel(channel));
             }
 
             sound.engineNode.spatializer.pChannelMapIn = soundChannelMap.data();
@@ -98,7 +98,7 @@ struct Sound::Impl
 
     void reinitialize()
     {
-        priv::reinitializeMiniaudioSound(sound, [this] { initialize(); });
+        priv::MiniaudioUtils::reinitializeSound(sound, [this] { initialize(); });
     }
 
     static ma_result read(ma_data_source* dataSource, void* framesOut, ma_uint64 frameCount, ma_uint64* framesRead)
@@ -292,7 +292,7 @@ void Sound::setLoop(bool loop)
 ////////////////////////////////////////////////////////////
 void Sound::setPlayingOffset(Time timeOffset)
 {
-    const auto frameIndex = priv::getMiniaudioFrameIndex(m_impl->sound, timeOffset);
+    const auto frameIndex = priv::MiniaudioUtils::getFrameIndex(m_impl->sound, timeOffset);
 
     if (m_impl->buffer)
         m_impl->cursor = static_cast<std::size_t>(frameIndex * m_impl->buffer->getChannelCount());
@@ -320,7 +320,7 @@ Time Sound::getPlayingOffset() const
     if (!m_impl->buffer || m_impl->buffer->getChannelCount() == 0 || m_impl->buffer->getSampleRate() == 0)
         return {};
 
-    return priv::getMiniaudioPlayingOffset(m_impl->sound);
+    return priv::MiniaudioUtils::getPlayingOffset(m_impl->sound);
 }
 
 

@@ -60,7 +60,7 @@ SoundSource::SoundSource(const SoundSource& copy) : AudioResource(copy)
 ////////////////////////////////////////////////////////////
 void SoundSource::setPitch(float pitch)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_pitch(sound, pitch);
 }
 
@@ -68,7 +68,7 @@ void SoundSource::setPitch(float pitch)
 ////////////////////////////////////////////////////////////
 void SoundSource::setPan(float pan)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_pan(sound, pan);
 }
 
@@ -76,7 +76,7 @@ void SoundSource::setPan(float pan)
 ////////////////////////////////////////////////////////////
 void SoundSource::setVolume(float volume)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_volume(sound, volume * 0.01f);
 }
 
@@ -84,7 +84,7 @@ void SoundSource::setVolume(float volume)
 ////////////////////////////////////////////////////////////
 void SoundSource::setSpatializationEnabled(bool enabled)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_spatialization_enabled(sound, enabled ? MA_TRUE : MA_FALSE);
 }
 
@@ -92,7 +92,7 @@ void SoundSource::setSpatializationEnabled(bool enabled)
 ////////////////////////////////////////////////////////////
 void SoundSource::setPosition(const Vector3f& position)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_position(sound, position.x, position.y, position.z);
 }
 
@@ -100,7 +100,7 @@ void SoundSource::setPosition(const Vector3f& position)
 ////////////////////////////////////////////////////////////
 void SoundSource::setDirection(const Vector3f& direction)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_direction(sound, direction.x, direction.y, direction.z);
 }
 
@@ -108,7 +108,7 @@ void SoundSource::setDirection(const Vector3f& direction)
 ////////////////////////////////////////////////////////////
 void SoundSource::setCone(const Cone& cone)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_cone(sound,
                           std::clamp(cone.innerAngle, sf::degrees(0), sf::degrees(360)).asRadians(),
                           std::clamp(cone.outerAngle, sf::degrees(0), sf::degrees(360)).asRadians(),
@@ -119,7 +119,7 @@ void SoundSource::setCone(const Cone& cone)
 ////////////////////////////////////////////////////////////
 void SoundSource::setVelocity(const Vector3f& velocity)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_velocity(sound, velocity.x, velocity.y, velocity.z);
 }
 
@@ -127,7 +127,7 @@ void SoundSource::setVelocity(const Vector3f& velocity)
 ////////////////////////////////////////////////////////////
 void SoundSource::setDopplerFactor(float factor)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_doppler_factor(sound, factor);
 }
 
@@ -135,7 +135,7 @@ void SoundSource::setDopplerFactor(float factor)
 ////////////////////////////////////////////////////////////
 void SoundSource::setDirectionalAttenuationFactor(float factor)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_directional_attenuation_factor(sound, factor);
 }
 
@@ -143,7 +143,7 @@ void SoundSource::setDirectionalAttenuationFactor(float factor)
 ////////////////////////////////////////////////////////////
 void SoundSource::setRelativeToListener(bool relative)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_positioning(sound, relative ? ma_positioning_relative : ma_positioning_absolute);
 }
 
@@ -151,7 +151,7 @@ void SoundSource::setRelativeToListener(bool relative)
 ////////////////////////////////////////////////////////////
 void SoundSource::setMinDistance(float distance)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_min_distance(sound, distance);
 }
 
@@ -159,7 +159,7 @@ void SoundSource::setMinDistance(float distance)
 ////////////////////////////////////////////////////////////
 void SoundSource::setMaxDistance(float distance)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_max_distance(sound, distance);
 }
 
@@ -167,7 +167,7 @@ void SoundSource::setMaxDistance(float distance)
 ////////////////////////////////////////////////////////////
 void SoundSource::setMinGain(float gain)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_min_gain(sound, gain);
 }
 
@@ -175,7 +175,7 @@ void SoundSource::setMinGain(float gain)
 ////////////////////////////////////////////////////////////
 void SoundSource::setMaxGain(float gain)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_max_gain(sound, gain);
 }
 
@@ -183,7 +183,7 @@ void SoundSource::setMaxGain(float gain)
 ////////////////////////////////////////////////////////////
 void SoundSource::setAttenuation(float attenuation)
 {
-    if (auto* sound = static_cast<ma_sound*>(getSound()); sound)
+    if (auto* sound = static_cast<ma_sound*>(getSound()))
         ma_sound_set_rolloff(sound, attenuation);
 }
 
@@ -191,7 +191,7 @@ void SoundSource::setAttenuation(float attenuation)
 ////////////////////////////////////////////////////////////
 float SoundSource::getPitch() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
         return ma_sound_get_pitch(sound);
 
     return 0.f;
@@ -201,7 +201,7 @@ float SoundSource::getPitch() const
 ////////////////////////////////////////////////////////////
 float SoundSource::getPan() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
         return ma_sound_get_pan(sound);
 
     return 0.f;
@@ -211,7 +211,7 @@ float SoundSource::getPan() const
 ////////////////////////////////////////////////////////////
 float SoundSource::getVolume() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
         return ma_sound_get_volume(sound) * 100.f;
 
     return 0.f;
@@ -221,7 +221,7 @@ float SoundSource::getVolume() const
 ////////////////////////////////////////////////////////////
 bool SoundSource::isSpatializationEnabled() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
         return ma_sound_is_spatialization_enabled(sound) == MA_TRUE;
 
     return false;
@@ -231,7 +231,7 @@ bool SoundSource::isSpatializationEnabled() const
 ////////////////////////////////////////////////////////////
 Vector3f SoundSource::getPosition() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
     {
         auto position = ma_sound_get_position(sound);
         return {position.x, position.y, position.z};
@@ -244,7 +244,7 @@ Vector3f SoundSource::getPosition() const
 ////////////////////////////////////////////////////////////
 Vector3f SoundSource::getDirection() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
     {
         auto direction = ma_sound_get_direction(sound);
         return {direction.x, direction.y, direction.z};
@@ -257,7 +257,7 @@ Vector3f SoundSource::getDirection() const
 ////////////////////////////////////////////////////////////
 SoundSource::Cone SoundSource::getCone() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
     {
         float innerAngle = 0.f;
         float outerAngle = 0.f;
@@ -275,7 +275,7 @@ SoundSource::Cone SoundSource::getCone() const
 ////////////////////////////////////////////////////////////
 Vector3f SoundSource::getVelocity() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
     {
         auto velocity = ma_sound_get_velocity(sound);
         return {velocity.x, velocity.y, velocity.z};
@@ -288,7 +288,7 @@ Vector3f SoundSource::getVelocity() const
 ////////////////////////////////////////////////////////////
 float SoundSource::getDopplerFactor() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
         return ma_sound_get_doppler_factor(sound);
 
     return 0.f;
@@ -298,7 +298,7 @@ float SoundSource::getDopplerFactor() const
 ////////////////////////////////////////////////////////////
 float SoundSource::getDirectionalAttenuationFactor() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
         return ma_sound_get_directional_attenuation_factor(sound);
 
     return 0.f;
@@ -308,7 +308,7 @@ float SoundSource::getDirectionalAttenuationFactor() const
 ////////////////////////////////////////////////////////////
 bool SoundSource::isRelativeToListener() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
         return ma_sound_get_positioning(sound) == ma_positioning_relative;
 
     return false;
@@ -318,7 +318,7 @@ bool SoundSource::isRelativeToListener() const
 ////////////////////////////////////////////////////////////
 float SoundSource::getMinDistance() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
         return ma_sound_get_min_distance(sound);
 
     return 0.f;
@@ -328,7 +328,7 @@ float SoundSource::getMinDistance() const
 ////////////////////////////////////////////////////////////
 float SoundSource::getMaxDistance() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
         return ma_sound_get_max_distance(sound);
 
     return 0.f;
@@ -338,7 +338,7 @@ float SoundSource::getMaxDistance() const
 ////////////////////////////////////////////////////////////
 float SoundSource::getMinGain() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
         return ma_sound_get_min_gain(sound);
 
     return 0.f;
@@ -348,7 +348,7 @@ float SoundSource::getMinGain() const
 ////////////////////////////////////////////////////////////
 float SoundSource::getMaxGain() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
         return ma_sound_get_max_gain(sound);
 
     return 0.f;
@@ -358,7 +358,7 @@ float SoundSource::getMaxGain() const
 ////////////////////////////////////////////////////////////
 float SoundSource::getAttenuation() const
 {
-    if (const auto* sound = static_cast<const ma_sound*>(getSound()); sound)
+    if (const auto* sound = static_cast<const ma_sound*>(getSound()))
         return ma_sound_get_rolloff(sound);
 
     return 0.f;

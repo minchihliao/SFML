@@ -33,7 +33,6 @@
 #include <ostream>
 
 #include <cassert>
-#include <cctype>
 
 
 namespace

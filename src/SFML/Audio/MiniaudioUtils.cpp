@@ -29,10 +29,14 @@
 #include <SFML/Audio/SoundChannel.hpp>
 
 #include <SFML/System/Angle.hpp>
+#include <SFML/System/Err.hpp>
+#include <SFML/System/Time.hpp>
 
 #include <miniaudio.h>
 
+#include <functional>
 #include <limits>
+#include <ostream>
 
 #include <cassert>
 
@@ -40,7 +44,83 @@
 namespace sf::priv
 {
 ////////////////////////////////////////////////////////////
-ma_channel soundChannelToMiniaudioChannel(sf::SoundChannel soundChannel)
+struct MiniaudioUtils::SavedSettings
+{
+    float          pitch;
+    float          pan;
+    float          volume;
+    ma_bool32      spatializationEnabled;
+    ma_vec3f       position;
+    ma_vec3f       direction;
+    float          directionalAttenuationFactor;
+    ma_vec3f       velocity;
+    float          dopplerFactor;
+    ma_positioning positioning;
+    float          minDistance;
+    float          maxDistance;
+    float          minGain;
+    float          maxGain;
+    float          rollOff;
+    float          innerAngle;
+    float          outerAngle;
+    float          outerGain;
+};
+
+
+////////////////////////////////////////////////////////////
+MiniaudioUtils::SavedSettings MiniaudioUtils::saveSettings(const ma_sound& sound)
+{
+    float innerAngle;
+    float outerAngle;
+    float outerGain;
+    ma_sound_get_cone(&sound, &innerAngle, &outerAngle, &outerGain);
+
+    return SavedSettings{ma_sound_get_pitch(&sound),
+                         ma_sound_get_pan(&sound),
+                         ma_sound_get_volume(&sound),
+                         ma_sound_is_spatialization_enabled(&sound),
+                         ma_sound_get_position(&sound),
+                         ma_sound_get_direction(&sound),
+                         ma_sound_get_directional_attenuation_factor(&sound),
+                         ma_sound_get_velocity(&sound),
+                         ma_sound_get_doppler_factor(&sound),
+                         ma_sound_get_positioning(&sound),
+                         ma_sound_get_min_distance(&sound),
+                         ma_sound_get_max_distance(&sound),
+                         ma_sound_get_min_gain(&sound),
+                         ma_sound_get_max_gain(&sound),
+                         ma_sound_get_rolloff(&sound),
+                         innerAngle,
+                         outerAngle,
+                         outerGain};
+}
+
+
+////////////////////////////////////////////////////////////
+void MiniaudioUtils::applySettings(ma_sound& sound, const SavedSettings& savedSettings)
+{
+    ma_sound_set_pitch(&sound, savedSettings.pitch);
+    ma_sound_set_pan(&sound, savedSettings.pan);
+    ma_sound_set_volume(&sound, savedSettings.volume);
+    ma_sound_set_spatialization_enabled(&sound, savedSettings.spatializationEnabled);
+    ma_sound_set_position(&sound, savedSettings.position.x, savedSettings.position.y, savedSettings.position.z);
+    ma_sound_set_direction(&sound, savedSettings.direction.x, savedSettings.direction.y, savedSettings.direction.z);
+    ma_sound_set_directional_attenuation_factor(&sound, savedSettings.directionalAttenuationFactor);
+    ma_sound_set_velocity(&sound, savedSettings.velocity.x, savedSettings.velocity.y, savedSettings.velocity.z);
+    ma_sound_set_doppler_factor(&sound, savedSettings.dopplerFactor);
+    ma_sound_set_positioning(&sound, savedSettings.positioning);
+    ma_sound_set_min_distance(&sound, savedSettings.minDistance);
+    ma_sound_set_max_distance(&sound, savedSettings.maxDistance);
+    ma_sound_set_min_gain(&sound, savedSettings.minGain);
+    ma_sound_set_max_gain(&sound, savedSettings.maxGain);
+    ma_sound_set_rolloff(&sound, savedSettings.rollOff);
+
+    ma_sound_set_cone(&sound, savedSettings.innerAngle, savedSettings.outerAngle, savedSettings.outerGain);
+}
+
+
+////////////////////////////////////////////////////////////
+ma_channel MiniaudioUtils::soundChannelToMiniaudioChannel(sf::SoundChannel soundChannel)
 {
     switch (soundChannel)
     {
@@ -90,7 +170,7 @@ ma_channel soundChannelToMiniaudioChannel(sf::SoundChannel soundChannel)
 
 
 ////////////////////////////////////////////////////////////
-void initializeSoundWithDefaultSettings(ma_sound& sound)
+void MiniaudioUtils::initializeSoundWithDefaultSettings(ma_sound& sound)
 {
     ma_sound_set_pitch(&sound, 1.f);
     ma_sound_set_pan(&sound, 0.f);
@@ -112,7 +192,19 @@ void initializeSoundWithDefaultSettings(ma_sound& sound)
 
 
 ////////////////////////////////////////////////////////////
-Time getMiniaudioPlayingOffset(ma_sound& sound)
+void MiniaudioUtils::initializeDataSource(ma_data_source_base& dataSourceBase, const ma_data_source_vtable& vtable)
+{
+    // Set this object up as a miniaudio data source
+    ma_data_source_config config = ma_data_source_config_init();
+    config.vtable                = &vtable;
+
+    if (ma_result result = ma_data_source_init(&config, &dataSourceBase); result != MA_SUCCESS)
+        err() << "Failed to initialize audio data source: " << ma_result_description(result) << std::endl;
+}
+
+
+////////////////////////////////////////////////////////////
+Time MiniaudioUtils::getPlayingOffset(ma_sound& sound)
 {
     float cursor = 0.f;
 
@@ -127,7 +219,7 @@ Time getMiniaudioPlayingOffset(ma_sound& sound)
 
 
 ////////////////////////////////////////////////////////////
-ma_uint64 getMiniaudioFrameIndex(ma_sound& sound, Time timeOffset)
+ma_uint64 MiniaudioUtils::getFrameIndex(ma_sound& sound, Time timeOffset)
 {
     ma_uint32 sampleRate{};
 
@@ -140,6 +232,32 @@ ma_uint64 getMiniaudioFrameIndex(ma_sound& sound, Time timeOffset)
         err() << "Failed to seek sound to pcm frame: " << ma_result_description(result) << std::endl;
 
     return frameIndex;
+}
+
+
+////////////////////////////////////////////////////////////
+void MiniaudioUtils::reinitializeSound(ma_sound& sound, const std::function<void()>& initializeFn)
+{
+    const SavedSettings savedSettings = saveSettings(sound);
+    ma_sound_uninit(&sound);
+
+    initializeFn();
+
+    applySettings(sound, savedSettings);
+}
+
+
+////////////////////////////////////////////////////////////
+void MiniaudioUtils::initializeSound(const ma_data_source_vtable& vtable,
+                                     ma_data_source_base&         dataSourceBase,
+                                     ma_sound&                    sound,
+                                     const std::function<void()>& initializeFn)
+{
+    initializeDataSource(dataSourceBase, vtable);
+
+    // Initialize sound structure and set default settings
+    initializeFn();
+    initializeSoundWithDefaultSettings(sound);
 }
 
 } // namespace sf::priv
