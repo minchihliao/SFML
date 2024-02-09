@@ -29,7 +29,7 @@
 #include <SFML/Graphics/Sprite.hpp>
 #include <SFML/Graphics/Texture.hpp>
 
-#include <cstdlib>
+#include <cmath>
 
 
 namespace sf
