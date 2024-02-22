@@ -14,14 +14,11 @@ find_path(
     libudev.h
     /usr/include
     /usr/local/include
-    ${UDEV_PATH_INCLUDES}
 )
 
 find_library(
     UDEV_LIBRARIES
     NAMES udev libudev
-    PATHS ${ADDITIONAL_LIBRARY_PATHS}
-        ${UDEV_PATH_LIB}
 )
 
 if(UDEV_LIBRARIES AND UDEV_INCLUDE_DIR)
@@ -41,10 +38,6 @@ if(UDEV_FOUND)
     message(STATUS "   include: ${UDEV_INCLUDE_DIR}")
 else()
     message(STATUS "UDev not found.")
-    message(STATUS "UDev: You can specify includes: -DUDEV_PATH_INCLUDES=/opt/udev/include")
-    message(STATUS "      currently found includes: ${UDEV_INCLUDE_DIR}")
-    message(STATUS "UDev: You can specify libs: -DUDEV_PATH_LIB=/opt/udev/lib")
-    message(STATUS "      currently found libs: ${UDEV_LIBRARIES}")
     if(UDev_FIND_REQUIRED)
         message(FATAL_ERROR "Could not find UDev library")
     endif()

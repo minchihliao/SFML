@@ -190,6 +190,7 @@ macro(sfml_add_library module)
     if((SFML_OS_MACOS OR SFML_OS_IOS) AND BUILD_SHARED_LIBS AND NOT THIS_STATIC)
         if(SFML_BUILD_FRAMEWORKS)
             # adapt target to build frameworks instead of dylibs
+            set(MACOSX_FRAMEWORK_ICON_FILE "")
             set_target_properties(${target} PROPERTIES
                                   FRAMEWORK TRUE
                                   FRAMEWORK_VERSION ${PROJECT_VERSION}

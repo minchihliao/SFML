@@ -1,3 +1,5 @@
+set(SFML_OS_ANDROID "")
+
 # detect the OS
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     set(SFML_OS_WINDOWS 1)
@@ -6,6 +8,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     set(OPENGL_ES 0)
 
     # detect the architecture
+    set(ARCH_64BITS "")
     if(CMAKE_SIZEOF_VOID_P EQUAL 4)
         set(ARCH_32BITS 1)
     elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)

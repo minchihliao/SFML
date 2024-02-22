@@ -69,6 +69,12 @@ if(SFML_OS_MACOS OR SFML_OS_IOS)
 
     # add an option to automatically install Xcode templates
     sfml_set_option(SFML_INSTALL_XCODE_TEMPLATES FALSE BOOL "TRUE to automatically install the Xcode templates, FALSE to do nothing about it. The templates are compatible with Xcode 4 and 5.")
+
+    # add option to set iOS deployment target
+    sfml_set_option(SFML_IOS_DEPLOYMENT_TARGET "" STRING "iOS deployment target")
+
+    # add option to set code sign identity
+    sfml_set_option(SFML_CODE_SIGN_IDENTITY "" STRING "iOS code sign identity")
 endif()
 
 # Android options
@@ -301,6 +307,7 @@ else()
     sfml_set_stdlib(SFML)
 
     # edit target properties
+    set(MACOSX_FRAMEWORK_ICON_FILE "")
     set_target_properties(SFML PROPERTIES
                           FRAMEWORK TRUE
                           FRAMEWORK_VERSION ${PROJECT_VERSION}

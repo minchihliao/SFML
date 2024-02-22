@@ -11,6 +11,15 @@
         "SFML_BUILD_EXAMPLES": "ON",
         "SFML_BUILD_TEST_SUITE": "ON",
         "SFML_WARNINGS_AS_ERRORS": "ON"
+      },
+      "warnings": {
+        "dev": true,
+        "deprecated": true,
+        "uninitialized": true
+      },
+      "errors": {
+        "dev": true,
+        "deprecated": true
       }
     }
   ]

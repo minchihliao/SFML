@@ -1,6 +1,7 @@
 # all source files
 set(SRC OpenGL.cpp)
 
+set(RESOURCES "")
 if(SFML_OS_IOS)
     set(RESOURCES
         resources/background.jpg

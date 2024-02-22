@@ -1,5 +1,7 @@
 # all source files
 set(SRC Tennis.cpp)
+
+set(RESOURCES "")
 if(SFML_OS_IOS)
     set(RESOURCES
         resources/ball.wav
