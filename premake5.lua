@@ -2,8 +2,8 @@ project "SFML"
     kind "StaticLib"
     language "C++"
 
-    targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+    targetdir ("bin/" .. Outputdir .. "/%{prj.name}")
+	objdir ("bin-int/" .. Outputdir .. "/%{prj.name}")
 
     files {
         "src/SFML/Graphics/**.cpp",
@@ -17,12 +17,22 @@ project "SFML"
     
     includedirs {
         "include",
-        "src"
+        "src",
+        "extlibs/headers" -- 假設所有第三方頭文件都放在這個資料夾下
+    }
+
+    libdirs {
+        "extlibs/bin/x64" -- 假設你的構建目標是64位系統
     }
 
     defines {
         "SFML_STATIC"
     }
+
+    filter "system:windows"
+        links {
+            "openal32" -- 引用 extlibs 中的 OpenAL 庫
+        }
 
     filter "configurations:Debug"
         runtime "Debug"
