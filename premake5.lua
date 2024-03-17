@@ -5,39 +5,76 @@ project "SFML"
     targetdir ("bin/" .. Outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. Outputdir .. "/%{prj.name}")
 
-    files {
-        "src/SFML/Graphics/**.cpp",
-        "src/SFML/Window/**.cpp",
-        "src/SFML/System/**.cpp",
-        "src/SFML/Audio/**.cpp",
-        "src/SFML/Network/**.cpp",
-        "include/**.hpp",
-        "include/**.inl"
-    }
-    
-    includedirs {
-        "include",
-        "src",
-        "extlibs/headers" -- 假設所有第三方頭文件都放在這個資料夾下
+
+    -- 全平台通用配置
+    includedirs 
+    { 
+        "include"
     }
 
-    libdirs {
-        "extlibs/bin/x64" -- 假設你的構建目標是64位系統
-    }
+    files
+	{
+		"include/SFML/**.hpp",
+		"include/Audio/**.hpp",
+		"include/Network/**.hpp",
+		"include/Graphics/**.hpp",
+		"include/System/**.hpp",
+		"include/Window/**.hpp",
+		"src/SFML/Audio/**.cpp",
+		"src/SFML/Graphics/**.cpp",
+	}
 
-    defines {
+    -- 通用預處理器定義
+    defines
+    {
         "SFML_STATIC"
     }
 
-    filter "system:windows"
-        links {
-            "openal32" -- 引用 extlibs 中的 OpenAL 庫
-        }
 
-    filter "configurations:Debug"
+    filter { "system:windows", "configurations:Debug" }
+        buildoptions "/MTD"
+        systemversion "latest"
         runtime "Debug"
         symbols "on"
-
-    filter "configurations:Release"
+        files
+        {
+            "src/SFML/Network/Win32/**.cpp",
+            "src/SFML/Network/Win32/**.hpp",
+            "src/SFML/Network/System/**.cpp",
+            "src/SFML/Network/System/**.hpp",
+            "src/SFML/Network/Window/**.cpp",
+            "src/SFML/Network/Window/**.hpp",
+        }
+        defines
+        {
+            "WIN32",
+            "_WINDOWS",
+            "DEBUG",
+            "SFML_STATIC"
+        }
+        
+    -- Windows 平台設定
+    filter { "system:windows", "configurations:Release" }
+        buildoptions "/MT"
+        systemversion "latest"
         runtime "Release"
         optimize "on"
+        files
+        {
+            "src/SFML/Network/Win32/**.cpp",
+            "src/SFML/Network/Win32/**.hpp",
+            "src/SFML/Network/System/**.cpp",
+            "src/SFML/Network/System/**.hpp",
+            "src/SFML/Network/Window/**.cpp",
+            "src/SFML/Network/Window/**.hpp",
+        }
+        defines
+        {
+            "WIN32",
+            "_WINDOWS",
+            "SFML_STATIC"
+        }
+        
+     
+
+        
